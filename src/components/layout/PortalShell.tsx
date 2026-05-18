@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Profile, Channel, canAccessTier, getTierColor, getTierLabel, getInitials } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import NotificationBell from './NotificationBell';
+import PushNotificationSetup from '@/components/PushNotificationSetup';
 
 interface Props {
   profile: Profile;
@@ -16,6 +17,9 @@ const NAV_ITEMS = [
   { page: 'home', label: 'Home', icon: '🏠', href: '/home', tier: 'free' as const },
   { page: 'community', label: 'Community', icon: '💬', href: '/community', tier: 'free' as const },
   { page: 'courses', label: 'Courses', icon: '🎓', href: '/courses', tier: 'free' as const },
+  { page: 'events', label: 'Events', icon: '📅', href: '/events', tier: 'free' as const },
+  { page: 'resources', label: 'Resources', icon: '📚', href: '/resources', tier: 'free' as const },
+  { page: 'messages', label: 'Messages', icon: '✉️', href: '/messages', tier: 'free' as const },
   { page: 'challenges', label: 'Challenges', icon: '🎯', href: '/challenges', tier: 'free' as const },
   { page: 'referrals', label: 'Referrals', icon: '🔗', href: '/referrals', tier: 'free' as const },
   { page: 'upgrade', label: 'Upgrade', icon: '⬆️', href: '/upgrade', tier: 'free' as const },
@@ -257,6 +261,8 @@ export default function PortalShell({ profile, channels, children }: Props) {
       }} className={isCommunity ? 'main-content main-content-community' : 'main-content'}>
         {children}
       </main>
+
+      <PushNotificationSetup />
 
       <style>{`
         @media (max-width: 900px) {
