@@ -142,13 +142,17 @@ export default function PostCard({ post, currentUser, onPin, onRemove }: Props) 
         <div style={{
           display: 'grid',
           gridTemplateColumns: post.media_urls.length === 1 ? '1fr' : 'repeat(2, 1fr)',
-          gap: '8px', marginBottom: '12px', borderRadius: '8px', overflow: 'hidden',
+          gap: '8px', marginBottom: '12px',
         }}>
           {post.media_urls.map((url, i) => (
             url.match(/\.(mp4|webm|mov)/i) ? (
-              <video key={i} src={url} controls style={{ width: '100%', borderRadius: '8px', maxHeight: '360px', objectFit: 'cover' }} />
+              // Videos: natural aspect ratio, centred, max 80vh tall so landscape vids don't overflow
+              <video
+                key={i} src={url} controls
+                style={{ width: '100%', maxHeight: '80vh', borderRadius: '8px', display: 'block', background: '#000' }}
+              />
             ) : (
-              <img key={i} src={url} alt="" style={{ width: '100%', borderRadius: '8px', maxHeight: '360px', objectFit: 'cover' }} />
+              <img key={i} src={url} alt="" style={{ width: '100%', borderRadius: '8px', maxHeight: '480px', objectFit: 'cover', display: 'block' }} />
             )
           ))}
         </div>
