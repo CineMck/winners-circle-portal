@@ -15,6 +15,7 @@ interface Props {
 const NAV_ITEMS = [
   { page: 'home', label: 'Home', icon: '🏠', href: '/home', tier: 'free' as const },
   { page: 'community', label: 'Community', icon: '💬', href: '/community', tier: 'free' as const },
+  { page: 'courses', label: 'Courses', icon: '🎓', href: '/courses', tier: 'free' as const },
   { page: 'challenges', label: 'Challenges', icon: '🎯', href: '/challenges', tier: 'free' as const },
   { page: 'referrals', label: 'Referrals', icon: '🔗', href: '/referrals', tier: 'free' as const },
   { page: 'upgrade', label: 'Upgrade', icon: '⬆️', href: '/upgrade', tier: 'free' as const },

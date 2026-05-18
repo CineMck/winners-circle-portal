@@ -8,6 +8,7 @@ const ADMIN_NAV = [
   { href: '/admin/members', label: 'Members', icon: '👥' },
   { href: '/admin/challenges', label: 'Challenges', icon: '🎯' },
   { href: '/admin/channels', label: 'Channels', icon: '💬' },
+  { href: '/admin/courses', label: 'Courses', icon: '🎓' },
   { href: '/admin/moderation', label: 'Moderation Log', icon: '🛡️' },
 ];
 
