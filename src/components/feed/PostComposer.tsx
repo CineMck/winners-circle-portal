@@ -16,6 +16,7 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
@@ -39,6 +40,14 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
     e.preventDefault();
     if (!content.trim() && mediaFiles.length === 0) return;
     setLoading(true);
+    setPostError(null);
+
+    // Require at least a channel or challenge target
+    if (!channelId && !challengeId) {
+      setPostError('No channel selected. Please post from a channel page.');
+      setLoading(false);
+      return;
+    }
 
     let mediaUrls: string[] = [];
 
@@ -53,7 +62,7 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
       }
     }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('posts')
       .insert({
         content: content.trim(),
@@ -65,10 +74,15 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
       .select('*, author:profiles(*), channel:channels(*)')
       .single();
 
+    setLoading(false);
+    if (error) {
+      console.error('Post error:', error);
+      setPostError(error.message);
+      return;
+    }
     setContent('');
     setMediaFiles([]);
     setMediaPreviews([]);
-    setLoading(false);
     if (data) onPostCreated?.(data);
   }
 
@@ -114,6 +128,11 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
             </div>
           )}
 
+          {postError && (
+            <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '6px', padding: '6px 10px', background: 'rgba(239,68,68,0.1)', borderRadius: '6px' }}>
+              ⚠️ {postError}
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button type="button" onClick={() => fileRef.current?.click()} style={{

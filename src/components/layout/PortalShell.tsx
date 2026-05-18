@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { page: 'community', label: 'Community', icon: '💬', href: '/community', tier: 'free' as const },
   { page: 'challenges', label: 'Challenges', icon: '🎯', href: '/challenges', tier: 'free' as const },
   { page: 'referrals', label: 'Referrals', icon: '🔗', href: '/referrals', tier: 'free' as const },
+  { page: 'upgrade', label: 'Upgrade', icon: '⬆️', href: '/upgrade', tier: 'free' as const },
   { page: 'profile', label: 'Profile', icon: '👤', href: '/profile', tier: 'free' as const },
 ];
 
@@ -173,11 +174,22 @@ export default function PortalShell({ profile, channels, children }: Props) {
               <div style={{ fontSize: '11px', color: tierColor }}>{getTierLabel(profile?.tier || 'free')}</div>
             </div>
           </div>
+          {profile?.tier !== 'founding' && (
+            <Link href="/upgrade" style={{
+              display: 'block', textAlign: 'center', padding: '8px', borderRadius: '8px',
+              background: 'var(--gold-dim)', border: '1px solid var(--gold)',
+              color: 'var(--gold)', fontSize: '12px', fontWeight: 700, marginBottom: '8px',
+              textDecoration: 'none',
+            }}>
+              ⬆️ Upgrade Membership
+            </Link>
+          )}
           {profile?.role && ['admin', 'moderator'].includes(profile.role) && (
             <Link href="/admin" style={{
               display: 'block', textAlign: 'center', padding: '8px', borderRadius: '8px',
               background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
               color: '#ef4444', fontSize: '12px', fontWeight: 600, marginBottom: '8px',
+              textDecoration: 'none',
             }}>
               ⚙️ Admin Panel
             </Link>
