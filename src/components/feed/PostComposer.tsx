@@ -71,7 +71,7 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
         challenge_id: challengeId || null,
         media_urls: mediaUrls,
       })
-      .select('*, author:profiles(*), channel:channels(*)')
+      .select('*, author:profiles!author_id(*), channel:channels(*)')
       .single();
 
     setLoading(false);

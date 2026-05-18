@@ -14,7 +14,7 @@ export default async function ChannelPage({ params }: { params: Promise<{ slug: 
 
   const { data: posts } = await supabase
     .from('posts')
-    .select('*, author:profiles(*), channel:channels(*)')
+    .select('*, author:profiles!author_id(*), channel:channels(*)')
     .eq('channel_id', channel.id)
     .eq('is_removed', false)
     .order('is_pinned', { ascending: false })

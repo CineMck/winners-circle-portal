@@ -21,7 +21,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
 
   const { data: posts } = await supabase
     .from('posts')
-    .select('*, author:profiles(*)')
+    .select('*, author:profiles!author_id(*)')
     .eq('challenge_id', id)
     .eq('is_removed', false)
     .order('is_pinned', { ascending: false })

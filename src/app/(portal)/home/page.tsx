@@ -8,7 +8,7 @@ export default async function HomePage() {
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user!.id).single();
   const { data: posts } = await supabase
     .from('posts')
-    .select('*, author:profiles(*), channel:channels(*), challenge:challenges(*)')
+    .select('*, author:profiles!author_id(*), channel:channels(*), challenge:challenges(*)')
     .eq('is_removed', false)
     .order('created_at', { ascending: false })
     .limit(30);

@@ -18,7 +18,7 @@ export default function CommentSection({ postId, currentUser }: Props) {
   useEffect(() => {
     supabase
       .from('comments')
-      .select('*, author:profiles(*)')
+      .select('*, author:profiles!author_id(*)')
       .eq('post_id', postId)
       .eq('is_removed', false)
       .order('created_at', { ascending: true })
@@ -32,7 +32,7 @@ export default function CommentSection({ postId, currentUser }: Props) {
     const { data } = await supabase
       .from('comments')
       .insert({ post_id: postId, author_id: currentUser.id, content: newComment.trim() })
-      .select('*, author:profiles(*)')
+      .select('*, author:profiles!author_id(*)')
       .single();
     if (data) setComments(prev => [...prev, data as Comment]);
     setNewComment('');
