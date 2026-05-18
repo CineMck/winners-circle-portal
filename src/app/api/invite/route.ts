@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       type: 'invite',
       email,
       options: {
-        redirectTo: `${appUrl}/auth/callback`,
+        redirectTo: `${appUrl}/auth/setup`,
       },
     });
 
