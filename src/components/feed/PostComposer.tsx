@@ -11,11 +11,15 @@ interface Props {
   onPostCreated?: (post: unknown) => void;
 }
 
+const MAX_FILE_SIZE_MB = 50;
+
 export default function PostComposer({ currentUser, channelId, challengeId, placeholder, onPostCreated }: Props) {
   const [content, setContent] = useState('');
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
+  const [mediaTypes, setMediaTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [postError, setPostError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
@@ -24,16 +28,33 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
-    setMediaFiles(prev => [...prev, ...files]);
+    const oversized = files.filter(f => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
+    if (oversized.length > 0) {
+      setPostError(`File too large: ${oversized.map(f => f.name).join(', ')} (max ${MAX_FILE_SIZE_MB}MB)`);
+      return;
+    }
+    setPostError(null);
     files.forEach(file => {
-      const url = URL.createObjectURL(file);
-      setMediaPreviews(prev => [...prev, url]);
+      setMediaFiles(prev => [...prev, file]);
+      setMediaTypes(prev => [...prev, file.type]);
+      if (file.type.startsWith('image/')) {
+        const url = URL.createObjectURL(file);
+        setMediaPreviews(prev => [...prev, url]);
+      } else {
+        // For video, store the blob URL but don't try to render a video element on mobile
+        const url = URL.createObjectURL(file);
+        setMediaPreviews(prev => [...prev, url]);
+      }
     });
+    // Reset file input so same file can be re-selected
+    if (fileRef.current) fileRef.current.value = '';
   }
 
   function removeMedia(index: number) {
     setMediaFiles(prev => prev.filter((_, i) => i !== index));
     setMediaPreviews(prev => prev.filter((_, i) => i !== index));
+    setMediaTypes(prev => prev.filter((_, i) => i !== index));
+    setPostError(null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -41,8 +62,8 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
     if (!content.trim() && mediaFiles.length === 0) return;
     setLoading(true);
     setPostError(null);
+    setUploadProgress(null);
 
-    // Require at least a channel or challenge target
     if (!channelId && !challengeId) {
       setPostError('No channel selected. Please post from a channel page.');
       setLoading(false);
@@ -51,16 +72,40 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
 
     let mediaUrls: string[] = [];
 
-    // Upload media files
-    for (const file of mediaFiles) {
-      const ext = file.name.split('.').pop();
-      const path = `posts/${currentUser.id}/${Date.now()}.${ext}`;
-      const { data } = await supabase.storage.from('media').upload(path, file);
-      if (data) {
-        const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
-        mediaUrls.push(urlData.publicUrl);
+    // Upload each media file with error handling
+    for (let i = 0; i < mediaFiles.length; i++) {
+      const file = mediaFiles[i];
+      const ext = file.name.split('.').pop() || 'bin';
+      const path = `posts/${currentUser.id}/${Date.now()}_${i}.${ext}`;
+      setUploadProgress(`Uploading file ${i + 1} of ${mediaFiles.length}…`);
+
+      try {
+        const { data, error: uploadError } = await supabase.storage
+          .from('media')
+          .upload(path, file, { upsert: false });
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          setPostError(`Upload failed: ${uploadError.message}`);
+          setLoading(false);
+          setUploadProgress(null);
+          return;
+        }
+
+        if (data) {
+          const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
+          mediaUrls.push(urlData.publicUrl);
+        }
+      } catch (err) {
+        console.error('Upload exception:', err);
+        setPostError('Upload failed — please check your connection and try again.');
+        setLoading(false);
+        setUploadProgress(null);
+        return;
       }
     }
+
+    setUploadProgress(null);
 
     const { data, error } = await supabase
       .from('posts')
@@ -83,6 +128,7 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
     setContent('');
     setMediaFiles([]);
     setMediaPreviews([]);
+    setMediaTypes([]);
     if (data) onPostCreated?.(data);
   }
 
@@ -108,23 +154,47 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
           />
 
           {/* Media previews */}
-          {mediaPreviews.length > 0 && (
+          {mediaFiles.length > 0 && (
             <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-              {mediaPreviews.map((url, i) => (
+              {mediaFiles.map((file, i) => (
                 <div key={i} style={{ position: 'relative' }}>
-                  {mediaFiles[i]?.type.startsWith('video') ? (
-                    <video src={url} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '8px' }} />
+                  {file.type.startsWith('image/') ? (
+                    <img
+                      src={mediaPreviews[i]}
+                      alt=""
+                      style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '8px', display: 'block' }}
+                    />
                   ) : (
-                    <img src={url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '8px' }} />
+                    // Video placeholder — reliable on iOS Safari
+                    <div style={{
+                      width: 80, height: 80, borderRadius: '8px', background: '#222',
+                      border: '1px solid var(--border)',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                    }}>
+                      <span style={{ fontSize: '24px' }}>🎥</span>
+                      <span style={{ fontSize: '10px', color: 'var(--muted)', textAlign: 'center', padding: '0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '72px' }}>
+                        {file.name.length > 10 ? file.name.slice(0, 10) + '…' : file.name}
+                      </span>
+                    </div>
                   )}
-                  <button onClick={() => removeMedia(i)} style={{
-                    position: 'absolute', top: '-6px', right: '-6px',
-                    background: '#ef4444', border: 'none', borderRadius: '50%',
-                    width: 20, height: 20, cursor: 'pointer', color: 'white', fontSize: '12px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>×</button>
+                  <button
+                    type="button"
+                    onClick={() => removeMedia(i)}
+                    style={{
+                      position: 'absolute', top: '-6px', right: '-6px',
+                      background: '#ef4444', border: 'none', borderRadius: '50%',
+                      width: 20, height: 20, cursor: 'pointer', color: 'white', fontSize: '14px', lineHeight: 1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >×</button>
                 </div>
               ))}
+            </div>
+          )}
+
+          {uploadProgress && (
+            <div style={{ color: 'var(--gold)', fontSize: '12px', marginTop: '6px', padding: '6px 10px', background: 'rgba(201,168,76,0.1)', borderRadius: '6px' }}>
+              ⏳ {uploadProgress}
             </div>
           )}
 
@@ -133,17 +203,36 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
               ⚠️ {postError}
             </div>
           )}
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <button type="button" onClick={() => fileRef.current?.click()} style={{
                 background: 'none', border: '1px solid var(--border)', borderRadius: '8px',
                 padding: '6px 12px', color: 'var(--muted)', cursor: 'pointer', fontSize: '12px',
-              }}>📷 Photo/Video</button>
-              <input ref={fileRef} type="file" accept="image/*,video/*" multiple onChange={handleFileChange} style={{ display: 'none' }} />
+              }}>
+                📷 Photo/Video
+              </button>
+              {mediaFiles.length > 0 && (
+                <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
+                  {mediaFiles.length} file{mediaFiles.length > 1 ? 's' : ''} selected
+                </span>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+              />
             </div>
-            <button type="submit" disabled={loading || (!content.trim() && mediaFiles.length === 0)} className="btn-gold"
-              style={{ padding: '8px 20px', fontSize: '13px' }}>
-              {loading ? 'Posting…' : 'Post'}
+            <button
+              type="submit"
+              disabled={loading || (!content.trim() && mediaFiles.length === 0)}
+              className="btn-gold"
+              style={{ padding: '8px 20px', fontSize: '13px' }}
+            >
+              {loading ? (uploadProgress ? '⏳' : 'Posting…') : 'Post'}
             </button>
           </div>
         </form>
