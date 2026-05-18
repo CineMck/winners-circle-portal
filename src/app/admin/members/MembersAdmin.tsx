@@ -44,8 +44,14 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
   }
 
   async function removeMember(memberId: string) {
-    await supabase.from('profiles').update({ subscription_status: 'suspended', tier: 'free' }).eq('id', memberId);
-    setMembers(prev => prev.map(m => m.id === memberId ? { ...m, subscription_status: 'suspended', tier: 'free' } : m));
+    const res = await fetch('/api/admin/delete-member', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: memberId }),
+    });
+    if (res.ok) {
+      setMembers(prev => prev.filter(m => m.id !== memberId));
+    }
     setConfirmRemoveId(null);
   }
 
