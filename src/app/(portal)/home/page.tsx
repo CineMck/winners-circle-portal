@@ -19,5 +19,11 @@ export default async function HomePage() {
     .order('xp_points', { ascending: false })
     .limit(5);
 
-  return <HomeFeed profile={profile} initialPosts={posts || []} topMembers={topMembers || []} />;
+  const { data: generalChannel } = await supabase
+    .from('channels')
+    .select('id')
+    .eq('slug', 'general')
+    .single();
+
+  return <HomeFeed profile={profile} initialPosts={posts || []} topMembers={topMembers || []} generalChannelId={generalChannel?.id} />;
 }

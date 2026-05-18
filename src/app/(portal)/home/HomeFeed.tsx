@@ -10,9 +10,10 @@ interface Props {
   profile: Profile;
   initialPosts: Post[];
   topMembers: Partial<Profile>[];
+  generalChannelId?: string;
 }
 
-export default function HomeFeed({ profile, initialPosts, topMembers }: Props) {
+export default function HomeFeed({ profile, initialPosts, topMembers, generalChannelId }: Props) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
 
   function handleNewPost(post: unknown) {
@@ -29,7 +30,7 @@ export default function HomeFeed({ profile, initialPosts, topMembers }: Props) {
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '24px', padding: '24px', maxWidth: '1100px' }} className="home-grid">
       {/* Feed */}
       <div>
-        <PostComposer currentUser={profile} onPostCreated={handleNewPost} />
+        <PostComposer currentUser={profile} channelId={generalChannelId} onPostCreated={handleNewPost} />
         {posts.length === 0 ? (
           <div className="card" style={{ padding: '48px', textAlign: 'center' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>💬</div>
