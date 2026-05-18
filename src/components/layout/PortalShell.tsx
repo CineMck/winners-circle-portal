@@ -26,6 +26,7 @@ export default function PortalShell({ profile, channels, children }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isCommunity = pathname.startsWith('/community');
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -99,6 +100,49 @@ export default function PortalShell({ profile, channels, children }: Props) {
           );
         })}
       </nav>
+
+      {/* MOBILE CHANNEL SUB-NAV — only shows on community pages */}
+      {isCommunity && (
+        <nav style={{
+          position: 'fixed',
+          top: 'calc(var(--topbar-h) + var(--mobile-nav-h))',
+          left: 0, right: 0,
+          height: '40px',
+          background: '#0d0d0d',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center',
+          overflowX: 'auto', overflowY: 'hidden',
+          gap: '6px', padding: '0 12px',
+          zIndex: 98,
+          scrollbarWidth: 'none',
+        }} className="channel-sub-nav">
+          {channels.map(channel => {
+            const hasAccess = canAccessTier(profile?.tier || 'free', channel.tier_required);
+            const active = pathname === `/community/${channel.slug}`;
+            return (
+              <Link
+                key={channel.id}
+                href={hasAccess ? `/community/${channel.slug}` : '/upgrade'}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  padding: '4px 10px', borderRadius: '20px', flexShrink: 0,
+                  background: active ? 'var(--gold)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${active ? 'var(--gold)' : 'var(--border)'}`,
+                  color: active ? '#0a0a0a' : hasAccess ? 'var(--text)' : 'var(--muted)',
+                  fontSize: '12px', fontWeight: active ? 700 : 500,
+                  textDecoration: 'none',
+                  opacity: hasAccess ? 1 : 0.5,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span style={{ fontSize: '11px' }}>#</span>
+                {channel.name.toLowerCase()}
+                {!hasAccess && <span style={{ fontSize: '10px' }}>🔒</span>}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
 
       {/* SIDEBAR */}
       <aside style={{
@@ -209,7 +253,7 @@ export default function PortalShell({ profile, channels, children }: Props) {
         marginLeft: 'var(--sidebar-w)',
         paddingTop: 'var(--topbar-h)',
         minHeight: '100vh',
-      }} className="main-content">
+      }} className={isCommunity ? 'main-content main-content-community' : 'main-content'}>
         {children}
       </main>
 
@@ -217,10 +261,14 @@ export default function PortalShell({ profile, channels, children }: Props) {
         @media (max-width: 900px) {
           .sidebar { display: none !important; }
           .main-content { margin-left: 0 !important; padding-top: calc(var(--topbar-h) + var(--mobile-nav-h)) !important; }
+          .main-content-community { margin-left: 0 !important; padding-top: calc(var(--topbar-h) + var(--mobile-nav-h) + 40px) !important; }
           .mobile-nav { display: flex !important; }
+          .channel-sub-nav { display: flex !important; }
+          .channel-sub-nav::-webkit-scrollbar { display: none; }
         }
         @media (min-width: 901px) {
           .mobile-nav { display: none !important; }
+          .channel-sub-nav { display: none !important; }
         }
       `}</style>
     </div>
