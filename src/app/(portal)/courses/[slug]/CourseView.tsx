@@ -31,6 +31,17 @@ interface Props {
   accessible: boolean;
 }
 
+function getEmbedUrl(url: string): { type: 'youtube' | 'vimeo' | 'direct'; src: string } {
+  // YouTube
+  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return { type: 'youtube', src: `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1` };
+  // Vimeo
+  const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vimeoMatch) return { type: 'vimeo', src: `https://player.vimeo.com/video/${vimeoMatch[1]}?dnt=1` };
+  // Direct file
+  return { type: 'direct', src: url };
+}
+
 function formatDuration(secs?: number) {
   if (!secs) return '';
   const m = Math.floor(secs / 60), s = secs % 60;
@@ -175,17 +186,25 @@ export default function CourseView({ course, profile, completedLessonIds, access
       <main style={{ flex: 1, overflowY: 'auto', background: 'var(--black-bg)' }}>
         {/* Video player */}
         <div style={{ background: '#000', position: 'relative', paddingTop: '56.25%' }}>
-          {currentVideo ? (
-            <video
-              key={currentVideo}
-              src={currentVideo}
-              controls
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-            />
-          ) : (
+          {currentVideo ? (() => {
+            const embed = getEmbedUrl(currentVideo);
+            if (embed.type === 'direct') {
+              return (
+                <video key={currentVideo} src={embed.src} controls
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />
+              );
+            }
+            return (
+              <iframe key={currentVideo} src={embed.src}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                allowFullScreen
+              />
+            );
+          })() : (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '12px', color: '#555' }}>
               <span style={{ fontSize: '48px' }}>🎬</span>
-              <span style={{ fontSize: '14px' }}>No video uploaded yet</span>
+              <span style={{ fontSize: '14px' }}>No video added yet</span>
             </div>
           )}
         </div>

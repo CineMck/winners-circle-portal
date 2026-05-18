@@ -53,6 +53,10 @@ export default function CoursesAdmin({ courses: initial, adminId }: { courses: C
   // New lesson form (keyed by course id)
   const [lessonForms, setLessonForms] = useState<Record<string, { title: string; description: string }>>({});
 
+  // Video URL inputs (keyed by courseId or lessonId)
+  const [videoUrlInputs, setVideoUrlInputs] = useState<Record<string, string>>({});
+  const [showUrlInput, setShowUrlInput] = useState<Record<string, boolean>>({});
+
   const thumbRef = useRef<HTMLInputElement>(null);
   const introRef = useRef<HTMLInputElement>(null);
   const lessonVideoRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -125,6 +129,30 @@ export default function CoursesAdmin({ courses: initial, adminId }: { courses: C
       setCourses(prev => prev.map(c => c.id === courseId ? { ...c, intro_video_url: url } : c));
     }
     setUploading(null);
+  }
+
+  // ── Save intro video URL ───────────────────────────────────
+  async function saveIntroUrl(courseId: string) {
+    const url = videoUrlInputs[`intro-url-${courseId}`]?.trim();
+    if (!url) return;
+    await supabase.from('courses').update({ intro_video_url: url }).eq('id', courseId);
+    setCourses(prev => prev.map(c => c.id === courseId ? { ...c, intro_video_url: url } : c));
+    setShowUrlInput(prev => ({ ...prev, [`intro-${courseId}`]: false }));
+    setVideoUrlInputs(prev => ({ ...prev, [`intro-url-${courseId}`]: '' }));
+  }
+
+  // ── Save lesson video URL ──────────────────────────────────
+  async function saveLessonUrl(courseId: string, lessonId: string) {
+    const url = videoUrlInputs[`lesson-url-${lessonId}`]?.trim();
+    if (!url) return;
+    await supabase.from('course_lessons').update({ video_url: url }).eq('id', lessonId);
+    setCourses(prev => prev.map(c =>
+      c.id === courseId
+        ? { ...c, lessons: (c.lessons || []).map(l => l.id === lessonId ? { ...l, video_url: url } : l) }
+        : c
+    ));
+    setShowUrlInput(prev => ({ ...prev, [`lesson-${lessonId}`]: false }));
+    setVideoUrlInputs(prev => ({ ...prev, [`lesson-url-${lessonId}`]: '' }));
   }
 
   // ── Add lesson ─────────────────────────────────────────────
@@ -315,16 +343,45 @@ export default function CoursesAdmin({ courses: initial, adminId }: { courses: C
                     {/* Intro video */}
                     <div>
                       <label style={labelStyle}>Intro Video</label>
-                      <div style={{ background: '#161616', border: '1px dashed #2a2a2a', borderRadius: '8px', padding: '16px', textAlign: 'center' }}>
-                        {course.intro_video_url && (
-                          <video src={course.intro_video_url} style={{ width: '100%', maxHeight: '100px', borderRadius: '6px', marginBottom: '8px' }} controls />
+                      <div style={{ background: '#161616', border: '1px dashed #2a2a2a', borderRadius: '8px', padding: '16px' }}>
+                        {course.intro_video_url && !showUrlInput[`intro-${course.id}`] && (
+                          <div style={{ marginBottom: '8px', fontSize: '12px', color: '#22c55e', wordBreak: 'break-all' }}>
+                            ✓ {course.intro_video_url.length > 50 ? course.intro_video_url.slice(0, 50) + '…' : course.intro_video_url}
+                          </div>
                         )}
-                        <input ref={introRef} type="file" accept="video/*" style={{ display: 'none' }}
-                          onChange={e => e.target.files?.[0] && handleIntroVideo(course.id, e.target.files[0])} />
-                        <button onClick={() => introRef.current?.click()} disabled={uploading === `intro-${course.id}`}
-                          style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '6px 14px', color: '#888', fontSize: '12px', cursor: 'pointer' }}>
-                          {uploading === `intro-${course.id}` ? 'Uploading…' : course.intro_video_url ? '🔄 Replace' : '🎥 Upload'}
-                        </button>
+                        {showUrlInput[`intro-${course.id}`] ? (
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <input
+                              style={{ ...inputStyle, flex: 1, fontSize: '12px', padding: '7px 10px' }}
+                              placeholder="Paste YouTube, Vimeo, or direct video URL…"
+                              value={videoUrlInputs[`intro-url-${course.id}`] || ''}
+                              onChange={e => setVideoUrlInputs(prev => ({ ...prev, [`intro-url-${course.id}`]: e.target.value }))}
+                              onKeyDown={e => e.key === 'Enter' && saveIntroUrl(course.id)}
+                              autoFocus
+                            />
+                            <button onClick={() => saveIntroUrl(course.id)}
+                              style={{ background: '#c9a84c', border: 'none', borderRadius: '6px', padding: '7px 12px', color: '#0a0a0a', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              Save
+                            </button>
+                            <button onClick={() => setShowUrlInput(prev => ({ ...prev, [`intro-${course.id}`]: false }))}
+                              style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '7px 10px', color: '#888', fontSize: '12px', cursor: 'pointer' }}>
+                              ×
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <input ref={introRef} type="file" accept="video/*" style={{ display: 'none' }}
+                              onChange={e => e.target.files?.[0] && handleIntroVideo(course.id, e.target.files[0])} />
+                            <button onClick={() => introRef.current?.click()} disabled={uploading === `intro-${course.id}`}
+                              style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '6px 12px', color: '#888', fontSize: '12px', cursor: 'pointer' }}>
+                              {uploading === `intro-${course.id}` ? 'Uploading…' : '⬆ Upload File'}
+                            </button>
+                            <button onClick={() => setShowUrlInput(prev => ({ ...prev, [`intro-${course.id}`]: true }))}
+                              style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '6px 12px', color: '#888', fontSize: '12px', cursor: 'pointer' }}>
+                              🔗 Paste URL
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -354,22 +411,48 @@ export default function CoursesAdmin({ courses: initial, adminId }: { courses: C
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: '14px' }}>{lesson.title}</div>
                           {lesson.description && <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>{lesson.description}</div>}
-                          <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            {lesson.video_url
-                              ? <span style={{ fontSize: '11px', color: '#22c55e' }}>✓ Video uploaded {lesson.duration_seconds ? `· ${formatDuration(lesson.duration_seconds)}` : ''}</span>
-                              : <span style={{ fontSize: '11px', color: '#f59e0b' }}>⚠ No video yet</span>
-                            }
-                            {/* Video upload button */}
-                            <input
-                              ref={el => { lessonVideoRefs.current[lesson.id] = el; }}
-                              type="file" accept="video/*" style={{ display: 'none' }}
-                              onChange={e => e.target.files?.[0] && handleLessonVideo(course.id, lesson.id, e.target.files[0])}
-                            />
-                            <button onClick={() => lessonVideoRefs.current[lesson.id]?.click()}
-                              disabled={uploading === `lesson-${lesson.id}`}
-                              style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: '5px', padding: '3px 10px', color: '#888', fontSize: '11px', cursor: 'pointer' }}>
-                              {uploading === `lesson-${lesson.id}` ? 'Uploading…' : lesson.video_url ? '🔄 Replace Video' : '🎥 Upload Video'}
-                            </button>
+                          <div style={{ marginTop: '8px' }}>
+                            {showUrlInput[`lesson-${lesson.id}`] ? (
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <input
+                                  style={{ ...inputStyle, flex: 1, fontSize: '12px', padding: '6px 10px' }}
+                                  placeholder="Paste YouTube, Vimeo, or direct video URL…"
+                                  value={videoUrlInputs[`lesson-url-${lesson.id}`] || ''}
+                                  onChange={e => setVideoUrlInputs(prev => ({ ...prev, [`lesson-url-${lesson.id}`]: e.target.value }))}
+                                  onKeyDown={e => e.key === 'Enter' && saveLessonUrl(course.id, lesson.id)}
+                                  autoFocus
+                                />
+                                <button onClick={() => saveLessonUrl(course.id, lesson.id)}
+                                  style={{ background: '#c9a84c', border: 'none', borderRadius: '6px', padding: '6px 10px', color: '#0a0a0a', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}>
+                                  Save
+                                </button>
+                                <button onClick={() => setShowUrlInput(prev => ({ ...prev, [`lesson-${lesson.id}`]: false }))}
+                                  style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '6px 8px', color: '#888', fontSize: '11px', cursor: 'pointer' }}>
+                                  ×
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                {lesson.video_url
+                                  ? <span style={{ fontSize: '11px', color: '#22c55e' }}>✓ Video set{lesson.duration_seconds ? ` · ${formatDuration(lesson.duration_seconds)}` : ''}</span>
+                                  : <span style={{ fontSize: '11px', color: '#f59e0b' }}>⚠ No video yet</span>
+                                }
+                                <input
+                                  ref={el => { lessonVideoRefs.current[lesson.id] = el; }}
+                                  type="file" accept="video/*" style={{ display: 'none' }}
+                                  onChange={e => e.target.files?.[0] && handleLessonVideo(course.id, lesson.id, e.target.files[0])}
+                                />
+                                <button onClick={() => lessonVideoRefs.current[lesson.id]?.click()}
+                                  disabled={uploading === `lesson-${lesson.id}`}
+                                  style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: '5px', padding: '3px 10px', color: '#888', fontSize: '11px', cursor: 'pointer' }}>
+                                  {uploading === `lesson-${lesson.id}` ? 'Uploading…' : '⬆ Upload'}
+                                </button>
+                                <button onClick={() => setShowUrlInput(prev => ({ ...prev, [`lesson-${lesson.id}`]: true }))}
+                                  style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: '5px', padding: '3px 10px', color: '#888', fontSize: '11px', cursor: 'pointer' }}>
+                                  🔗 URL
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
