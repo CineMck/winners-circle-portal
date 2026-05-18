@@ -11,6 +11,7 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
   const [editTier, setEditTier] = useState<MemberTier>('free');
   const [editRole, setEditRole] = useState<UserRole>('member');
   const [saving, setSaving] = useState(false);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
   // Invite modal state
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -42,10 +43,10 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
     setSaving(false);
   }
 
-  async function removeMember(memberId: string, name: string) {
-    if (!confirm(`Remove ${name} from the portal? Their account will be marked as suspended.`)) return;
+  async function removeMember(memberId: string) {
     await supabase.from('profiles').update({ subscription_status: 'suspended', tier: 'free' }).eq('id', memberId);
     setMembers(prev => prev.map(m => m.id === memberId ? { ...m, subscription_status: 'suspended', tier: 'free' } : m));
+    setConfirmRemoveId(null);
   }
 
   async function sendInvite() {
@@ -185,10 +186,24 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
                             style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', color: 'var(--text)' }}>
                             Edit
                           </button>
-                          <button onClick={() => removeMember(member.id, member.full_name)}
-                            style={{ background: 'none', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', color: '#ef4444' }}>
-                            Remove
-                          </button>
+                          {confirmRemoveId === member.id ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ fontSize: '11px', color: '#ef4444', whiteSpace: 'nowrap' }}>Sure?</span>
+                              <button onClick={() => removeMember(member.id)}
+                                style={{ background: '#ef4444', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', color: '#fff', fontWeight: 700 }}>
+                                Yes
+                              </button>
+                              <button onClick={() => setConfirmRemoveId(null)}
+                                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 8px', cursor: 'pointer', fontSize: '12px', color: 'var(--muted)' }}>
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setConfirmRemoveId(member.id)}
+                              style={{ background: 'none', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', color: '#ef4444' }}>
+                              Remove
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
