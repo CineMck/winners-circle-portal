@@ -38,12 +38,26 @@ export default async function MemberProfilePage({ params }: { params: Promise<{ 
     .eq('status', 'completed')
     .order('completed_at', { ascending: false });
 
+  // Supabase returns joined relations as arrays; normalise to single objects
+  const posts = (recentPosts || []).map(p => ({
+    id: p.id as string,
+    content: p.content as string,
+    created_at: p.created_at as string,
+    channel: Array.isArray(p.channel) ? (p.channel[0] ?? null) : (p.channel ?? null),
+  }));
+
+  const challenges = (completedChallenges || []).map(c => ({
+    id: c.id as string,
+    completed_at: c.completed_at as string | undefined,
+    challenge: Array.isArray(c.challenge) ? (c.challenge[0] ?? null) : (c.challenge ?? null),
+  }));
+
   return (
     <MemberProfileView
       currentUserId={user.id}
       member={member}
-      recentPosts={recentPosts || []}
-      completedChallenges={completedChallenges || []}
+      recentPosts={posts}
+      completedChallenges={challenges}
     />
   );
 }
