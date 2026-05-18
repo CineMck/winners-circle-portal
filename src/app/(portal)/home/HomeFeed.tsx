@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Post, Profile } from '@/types';
 import PostCard from '@/components/feed/PostCard';
 import PostComposer from '@/components/feed/PostComposer';
+import { createClient } from '@/lib/supabase/client';
 import { getTierColor, getTierLabel } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -15,6 +16,32 @@ interface Props {
 
 export default function HomeFeed({ profile, initialPosts, topMembers, isAdmin }: Props) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const supabase = createClient();
+
+  const refreshFeed = useCallback(async () => {
+    setRefreshing(true);
+    // Re-fetch admin/mod IDs then their posts
+    const { data: adminProfiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .in('role', ['admin', 'moderator']);
+    const adminIds = (adminProfiles || []).map((p: { id: string }) => p.id);
+    if (adminIds.length > 0) {
+      const { data } = await supabase
+        .from('posts')
+        .select('*, author:profiles!author_id(*), channel:channels(*), challenge:challenges(*)')
+        .in('author_id', adminIds)
+        .eq('is_removed', false)
+        .order('is_pinned', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (data) setPosts(data as Post[]);
+    }
+    setLastRefreshed(new Date());
+    setRefreshing(false);
+  }, [supabase]);
 
   function handleNewPost(post: unknown) {
     setPosts(prev => [post as Post, ...prev]);
@@ -38,7 +65,7 @@ export default function HomeFeed({ profile, initialPosts, topMembers, isAdmin }:
           display: 'flex', alignItems: 'center', gap: '12px',
         }}>
           <span style={{ fontSize: '28px' }}>📣</span>
-          <div>
+          <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--gold)' }}>
               Announcements &amp; Updates
             </div>
@@ -47,7 +74,26 @@ export default function HomeFeed({ profile, initialPosts, topMembers, isAdmin }:
               <Link href="/community" style={{ color: 'var(--gold)', textDecoration: 'none' }}>Community →</Link>
             </div>
           </div>
+          <button
+            onClick={refreshFeed}
+            disabled={refreshing}
+            title="Refresh feed"
+            style={{
+              flexShrink: 0, background: 'none', border: '1px solid rgba(201,168,76,0.3)',
+              borderRadius: '8px', padding: '7px 12px', cursor: refreshing ? 'not-allowed' : 'pointer',
+              color: refreshing ? 'var(--muted)' : 'var(--gold)',
+              fontSize: '18px', lineHeight: 1, display: 'flex', alignItems: 'center', gap: '6px',
+            }}
+          >
+            <span style={{ display: 'inline-block', animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }}>↻</span>
+            {lastRefreshed && !refreshing && (
+              <span style={{ fontSize: '11px', color: 'var(--muted)', fontWeight: 500 }}>
+                {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </button>
         </div>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
         {/* Admin composer — only visible to admins/mods */}
         {isAdmin && (
