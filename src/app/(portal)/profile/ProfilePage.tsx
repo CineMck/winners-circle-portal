@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Profile, ChallengeParticipation, Post, getTierColor, getTierLabel } from '@/types';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getInitials } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 
@@ -15,11 +15,56 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(profile?.full_name || '');
   const [bio, setBio] = useState(profile?.bio || '');
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
   const [saving, setSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'activity' | 'challenges' | 'settings'>('activity');
+  const avatarRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
   const tierColor = getTierColor(profile?.tier || 'free');
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Please select an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError('Image must be under 5MB');
+      return;
+    }
+
+    setAvatarUploading(true);
+    setAvatarError(null);
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('folder', 'avatars');
+      fd.append('userId', profile.id);
+
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const json = await res.json();
+
+      if (!res.ok || json.error) {
+        setAvatarError(json.error || 'Upload failed');
+        setAvatarUploading(false);
+        return;
+      }
+
+      // Save to profile immediately
+      await supabase.from('profiles').update({ avatar_url: json.url }).eq('id', profile.id);
+      setAvatarUrl(json.url);
+    } catch {
+      setAvatarError('Upload failed — please try again');
+    }
+    setAvatarUploading(false);
+    // Reset file input
+    if (avatarRef.current) avatarRef.current.value = '';
+  }
 
   async function saveProfile() {
     setSaving(true);
@@ -34,15 +79,56 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
       <div className="card" style={{ padding: '24px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-            <div style={{
-              width: 80, height: 80, borderRadius: '50%',
-              background: 'var(--gold-dim)', border: `3px solid ${tierColor}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '28px', fontWeight: 700, color: tierColor, flexShrink: 0,
-            }}>
-              {(profile?.full_name || 'U').slice(0, 2).toUpperCase()}
+
+            {/* Avatar with upload on click */}
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <div
+                onClick={() => avatarRef.current?.click()}
+                style={{
+                  width: 80, height: 80, borderRadius: '50%',
+                  background: 'var(--gold-dim)', border: `3px solid ${tierColor}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '28px', fontWeight: 700, color: tierColor,
+                  cursor: 'pointer', overflow: 'hidden', position: 'relative',
+                }}
+              >
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                ) : (
+                  <span>{getInitials(profile?.full_name || 'U')}</span>
+                )}
+                {/* Hover overlay */}
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.5)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  opacity: avatarUploading ? 1 : 0,
+                  transition: 'opacity 0.2s',
+                }}>
+                  <span style={{ fontSize: '20px' }}>{avatarUploading ? '⏳' : '📷'}</span>
+                </div>
+              </div>
+              {/* Camera badge */}
+              <div
+                onClick={() => avatarRef.current?.click()}
+                style={{
+                  position: 'absolute', bottom: 0, right: 0,
+                  width: 24, height: 24, borderRadius: '50%',
+                  background: 'var(--gold)', border: '2px solid var(--black-bg)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', fontSize: '12px',
+                }}
+              >📷</div>
+              <input
+                ref={avatarRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                style={{ display: 'none' }}
+              />
             </div>
-            <div>
+
+            <div style={{ flex: 1 }}>
               {editing ? (
                 <input value={fullName} onChange={e => setFullName(e.target.value)}
                   style={{ background: '#161616', border: '1px solid var(--border)', borderRadius: '8px', padding: '6px 10px', color: 'var(--text)', fontSize: '18px', fontWeight: 700, width: '200px' }} />
@@ -60,6 +146,14 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
                   style={{ marginTop: '8px', background: '#161616', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px', color: 'var(--text)', fontSize: '13px', width: '100%', resize: 'none' }} />
               ) : (
                 profile?.bio && <p style={{ color: 'var(--muted)', fontSize: '13px', marginTop: '8px' }}>{profile.bio}</p>
+              )}
+              {avatarError && (
+                <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>⚠️ {avatarError}</p>
+              )}
+              {!editing && (
+                <p style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '6px' }}>
+                  Tap the photo to update your profile picture
+                </p>
               )}
             </div>
           </div>

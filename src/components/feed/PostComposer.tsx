@@ -72,30 +72,27 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
 
     let mediaUrls: string[] = [];
 
-    // Upload each media file with error handling
+    // Upload each media file via server-side API route (bypasses storage RLS)
     for (let i = 0; i < mediaFiles.length; i++) {
       const file = mediaFiles[i];
-      const ext = file.name.split('.').pop() || 'bin';
-      const path = `posts/${currentUser.id}/${Date.now()}_${i}.${ext}`;
       setUploadProgress(`Uploading file ${i + 1} of ${mediaFiles.length}…`);
 
       try {
-        const { data, error: uploadError } = await supabase.storage
-          .from('media')
-          .upload(path, file, { upsert: false });
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('folder', 'posts');
+        fd.append('userId', currentUser.id);
 
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          setPostError(`Upload failed: ${uploadError.message}`);
+        const res = await fetch('/api/upload', { method: 'POST', body: fd });
+        const json = await res.json();
+
+        if (!res.ok || json.error) {
+          setPostError(`Upload failed: ${json.error || res.statusText}`);
           setLoading(false);
           setUploadProgress(null);
           return;
         }
-
-        if (data) {
-          const { data: urlData } = supabase.storage.from('media').getPublicUrl(path);
-          mediaUrls.push(urlData.publicUrl);
-        }
+        mediaUrls.push(json.url);
       } catch (err) {
         console.error('Upload exception:', err);
         setPostError('Upload failed — please check your connection and try again.');
