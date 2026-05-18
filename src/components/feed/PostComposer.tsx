@@ -8,12 +8,13 @@ interface Props {
   channelId?: string;
   challengeId?: string;
   placeholder?: string;
+  allowNoChannel?: boolean;
   onPostCreated?: (post: unknown) => void;
 }
 
 const MAX_FILE_SIZE_MB = 50;
 
-export default function PostComposer({ currentUser, channelId, challengeId, placeholder, onPostCreated }: Props) {
+export default function PostComposer({ currentUser, channelId, challengeId, placeholder, allowNoChannel, onPostCreated }: Props) {
   const [content, setContent] = useState('');
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
@@ -64,7 +65,7 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
     setPostError(null);
     setUploadProgress(null);
 
-    if (!channelId && !challengeId) {
+    if (!channelId && !challengeId && !allowNoChannel) {
       setPostError('No channel selected. Please post from a channel page.');
       setLoading(false);
       return;

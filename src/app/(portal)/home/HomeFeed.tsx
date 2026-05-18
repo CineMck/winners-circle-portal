@@ -10,10 +10,10 @@ interface Props {
   profile: Profile;
   initialPosts: Post[];
   topMembers: Partial<Profile>[];
-  generalChannelId?: string;
+  isAdmin: boolean;
 }
 
-export default function HomeFeed({ profile, initialPosts, topMembers, generalChannelId }: Props) {
+export default function HomeFeed({ profile, initialPosts, topMembers, isAdmin }: Props) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
 
   function handleNewPost(post: unknown) {
@@ -30,12 +30,46 @@ export default function HomeFeed({ profile, initialPosts, topMembers, generalCha
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '24px', padding: '24px', maxWidth: '1100px' }} className="home-grid">
       {/* Feed */}
       <div>
-        <PostComposer currentUser={profile} channelId={generalChannelId} onPostCreated={handleNewPost} />
+        {/* Header banner */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(201,168,76,0.12) 0%, rgba(201,168,76,0.04) 100%)',
+          border: '1px solid rgba(201,168,76,0.25)',
+          borderRadius: '12px', padding: '16px 20px', marginBottom: '20px',
+          display: 'flex', alignItems: 'center', gap: '12px',
+        }}>
+          <span style={{ fontSize: '28px' }}>📣</span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--gold)' }}>
+              Announcements &amp; Updates
+            </div>
+            <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: '2px' }}>
+              Official posts from The Winner&apos;s Circle team · Member discussion lives in{' '}
+              <Link href="/community" style={{ color: 'var(--gold)', textDecoration: 'none' }}>Community →</Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Admin composer — only visible to admins/mods */}
+        {isAdmin && (
+          <PostComposer
+            currentUser={profile}
+            channelId={undefined}
+            allowNoChannel
+            placeholder="Post an announcement to all members…"
+            onPostCreated={handleNewPost}
+          />
+        )}
+
         {posts.length === 0 ? (
           <div className="card" style={{ padding: '48px', textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>💬</div>
-            <h3 style={{ marginBottom: '8px' }}>The feed is quiet</h3>
-            <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Be the first to post something!</p>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📣</div>
+            <h3 style={{ marginBottom: '8px' }}>No announcements yet</h3>
+            <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
+              Check back soon — team updates and announcements will appear here.
+            </p>
+            <Link href="/community" className="btn-gold" style={{ display: 'inline-block', marginTop: '16px', padding: '10px 24px', fontSize: '13px' }}>
+              Go to Community →
+            </Link>
           </div>
         ) : (
           posts.map(post => (
@@ -51,10 +85,16 @@ export default function HomeFeed({ profile, initialPosts, topMembers, generalCha
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
             <div style={{
               width: 48, height: 48, borderRadius: '50%',
-              background: 'var(--gold-dim)', border: `2px solid ${getTierColor(profile?.tier || 'free')}`,
+              background: profile?.avatar_url ? 'transparent' : 'var(--gold-dim)',
+              border: `2px solid ${getTierColor(profile?.tier || 'free')}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '18px', fontWeight: 700, color: getTierColor(profile?.tier || 'free'),
-            }}>{(profile?.full_name || 'U').slice(0, 2).toUpperCase()}</div>
+              overflow: 'hidden',
+            }}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : (profile?.full_name || 'U').slice(0, 2).toUpperCase()}
+            </div>
             <div>
               <div style={{ fontWeight: 700 }}>{profile?.full_name}</div>
               <div style={{ fontSize: '12px', color: getTierColor(profile?.tier || 'free') }}>
@@ -77,18 +117,25 @@ export default function HomeFeed({ profile, initialPosts, topMembers, generalCha
             <Link key={member.id} href={`/profile/${member.username}`} style={{
               display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0',
               borderBottom: i < topMembers.length - 1 ? '1px solid var(--border)' : 'none',
+              textDecoration: 'none',
             }}>
               <span style={{ fontSize: '14px', fontWeight: 700, width: '20px', color: i === 0 ? 'var(--gold)' : 'var(--muted)' }}>
-                {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`}
+                {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}
               </span>
               <div style={{
                 width: 32, height: 32, borderRadius: '50%',
-                background: 'var(--gold-dim)', border: `1px solid ${getTierColor(member.tier || 'free')}`,
+                background: member.avatar_url ? 'transparent' : 'var(--gold-dim)',
+                border: `1px solid ${getTierColor(member.tier || 'free')}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: '11px', fontWeight: 700, color: getTierColor(member.tier || 'free'),
-              }}>{(member.full_name || 'U').slice(0, 2).toUpperCase()}</div>
+                overflow: 'hidden', flexShrink: 0,
+              }}>
+                {member.avatar_url
+                  ? <img src={member.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : (member.full_name || 'U').slice(0, 2).toUpperCase()}
+              </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '13px', fontWeight: 600 }}>{member.full_name}</div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{member.full_name}</div>
               </div>
               <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--gold)' }}>{member.xp_points} XP</div>
             </Link>
@@ -103,12 +150,13 @@ export default function HomeFeed({ profile, initialPosts, topMembers, generalCha
           {[
             { href: '/challenges', icon: '🎯', label: 'Active Challenges' },
             { href: '/community/wins', icon: '🏆', label: '#wins channel' },
-            { href: '/community/accountability', icon: '🎯', label: '#accountability' },
+            { href: '/community/accountability', icon: '📋', label: '#accountability' },
             { href: '/referrals', icon: '🔗', label: 'Refer a Friend' },
           ].map(link => (
             <Link key={link.href} href={link.href} style={{
               display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 0',
               fontSize: '13px', color: 'var(--muted)', borderBottom: '1px solid var(--border-subtle, #161616)',
+              textDecoration: 'none',
             }}>
               <span>{link.icon}</span> {link.label}
             </Link>
