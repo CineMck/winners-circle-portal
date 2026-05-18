@@ -18,5 +18,17 @@ export default async function Page() {
     .select('*')
     .eq('user_id', user!.id);
 
-  return <ChallengesPage profile={profile} challenges={challenges || []} userParticipations={userParticipations || []} />;
+  // Get user's checkin counts per challenge (for progress bars)
+  const { data: checkinCounts } = await supabase
+    .from('challenge_checkins')
+    .select('challenge_id')
+    .eq('user_id', user!.id);
+
+  // Build a map of challenge_id -> checkin count
+  const checkinMap: Record<string, number> = {};
+  (checkinCounts || []).forEach(row => {
+    checkinMap[row.challenge_id] = (checkinMap[row.challenge_id] || 0) + 1;
+  });
+
+  return <ChallengesPage profile={profile} challenges={challenges || []} userParticipations={userParticipations || []} checkinCounts={checkinMap} />;
 }

@@ -82,10 +82,28 @@ export interface Challenge {
   is_evergreen: boolean;
   created_by: string;
   created_at: string;
+  // Progress tracking fields
+  duration_days: number | null;
+  daily_tasks: string[];
+  target_metric: string | null;
+  metric_unit: string | null;
+  completion_threshold: number;
   participant_count?: number;
   completion_count?: number;
   post_count?: number;
   user_participation?: ChallengeParticipation | null;
+}
+
+export interface ChallengeCheckin {
+  id: string;
+  challenge_id: string;
+  user_id: string;
+  check_date: string;
+  tasks_completed: boolean[];
+  metric_value: number | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ChallengeParticipation {

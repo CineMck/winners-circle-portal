@@ -9,9 +9,10 @@ interface Props {
   profile: Profile;
   challenges: Challenge[];
   userParticipations: ChallengeParticipation[];
+  checkinCounts: Record<string, number>;
 }
 
-export default function ChallengesPage({ profile, challenges, userParticipations }: Props) {
+export default function ChallengesPage({ profile, challenges, userParticipations, checkinCounts }: Props) {
   const [participations, setParticipations] = useState<ChallengeParticipation[]>(userParticipations);
   const [loading, setLoading] = useState<string | null>(null);
   const supabase = createClient();
@@ -62,7 +63,9 @@ export default function ChallengesPage({ profile, challenges, userParticipations
         <section style={{ marginBottom: '32px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: 'var(--gold)' }}>⚡ In Progress</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {enrolled.map(c => <ChallengeCard key={c.id} challenge={c} participation={getParticipation(c.id)} profile={profile} onJoin={joinChallenge} loading={loading === c.id} />)}
+            {enrolled.map(c => (
+              <ChallengeCard key={c.id} challenge={c} participation={getParticipation(c.id)} profile={profile} onJoin={joinChallenge} loading={loading === c.id} checkinCount={checkinCounts[c.id] || 0} />
+            ))}
           </div>
         </section>
       )}
@@ -72,7 +75,9 @@ export default function ChallengesPage({ profile, challenges, userParticipations
         <section style={{ marginBottom: '32px' }}>
           <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>🎯 Available Challenges</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {available.map(c => <ChallengeCard key={c.id} challenge={c} participation={undefined} profile={profile} onJoin={joinChallenge} loading={loading === c.id} />)}
+            {available.map(c => (
+              <ChallengeCard key={c.id} challenge={c} participation={undefined} profile={profile} onJoin={joinChallenge} loading={loading === c.id} checkinCount={0} />
+            ))}
           </div>
         </section>
       )}
@@ -82,7 +87,9 @@ export default function ChallengesPage({ profile, challenges, userParticipations
         <section>
           <h2 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: '#22c55e' }}>✅ Completed</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {completed.map(c => <ChallengeCard key={c.id} challenge={c} participation={getParticipation(c.id)} profile={profile} onJoin={joinChallenge} loading={loading === c.id} />)}
+            {completed.map(c => (
+              <ChallengeCard key={c.id} challenge={c} participation={getParticipation(c.id)} profile={profile} onJoin={joinChallenge} loading={loading === c.id} checkinCount={checkinCounts[c.id] || 0} />
+            ))}
           </div>
         </section>
       )}
@@ -90,17 +97,23 @@ export default function ChallengesPage({ profile, challenges, userParticipations
   );
 }
 
-function ChallengeCard({ challenge, participation, profile, onJoin, loading }: {
+function ChallengeCard({ challenge, participation, profile, onJoin, loading, checkinCount }: {
   challenge: Challenge;
   participation?: ChallengeParticipation;
   profile: Profile;
   onJoin: (id: string) => void;
   loading: boolean;
+  checkinCount: number;
 }) {
   const hasAccess = canAccessTier(profile?.tier || 'free', challenge.tier_required);
   const isCompleted = ['completed', 'verified'].includes(participation?.status || '');
   const isEnrolled = participation?.status === 'enrolled';
   const tierColor = getTierColor(challenge.tier_required);
+
+  const hasDuration = !!challenge.duration_days;
+  const progressPercent = hasDuration
+    ? Math.min(100, Math.round((checkinCount / challenge.duration_days!) * 100))
+    : null;
 
   return (
     <Link href={hasAccess ? `/challenges/${challenge.id}` : '/upgrade'}
@@ -124,6 +137,8 @@ function ChallengeCard({ challenge, participation, profile, onJoin, loading }: {
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '12px', color: 'var(--gold)', fontWeight: 600 }}>+{challenge.xp_reward} XP</span>
+              {hasDuration && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>📅 {challenge.duration_days} days</span>}
+              {challenge.target_metric && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>📊 {challenge.target_metric}</span>}
               {!hasAccess && (
                 <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', border: `1px solid ${tierColor}`, color: tierColor }}>
                   🔒 {getTierLabel(challenge.tier_required)}+
@@ -136,6 +151,36 @@ function ChallengeCard({ challenge, participation, profile, onJoin, loading }: {
               )}
               {challenge.is_evergreen && <span style={{ fontSize: '12px', color: 'var(--muted)' }}>♾️ Evergreen</span>}
             </div>
+
+            {/* Progress bar for enrolled challenges with duration */}
+            {isEnrolled && hasDuration && progressPercent !== null && (
+              <div style={{ marginTop: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--muted)', marginBottom: '4px' }}>
+                  <span>{checkinCount} / {challenge.duration_days} days checked in</span>
+                  <span style={{ color: progressPercent >= (challenge.completion_threshold || 80) ? '#22c55e' : 'var(--muted)' }}>
+                    {progressPercent}%
+                  </span>
+                </div>
+                <div style={{ height: '6px', background: '#222', borderRadius: '100px', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${progressPercent}%`,
+                    background: progressPercent >= (challenge.completion_threshold || 80)
+                      ? 'linear-gradient(90deg, #22c55e, #16a34a)'
+                      : 'linear-gradient(90deg, var(--gold), #e0a820)',
+                    borderRadius: '100px',
+                    transition: 'width 0.4s ease',
+                  }} />
+                </div>
+              </div>
+            )}
+
+            {/* Checkin count for enrolled without duration */}
+            {isEnrolled && !hasDuration && checkinCount > 0 && (
+              <div style={{ marginTop: '10px', fontSize: '12px', color: 'var(--muted)' }}>
+                🔥 {checkinCount} day{checkinCount !== 1 ? 's' : ''} checked in
+              </div>
+            )}
           </div>
           {!participation && hasAccess && (
             <button onClick={(e) => { e.preventDefault(); onJoin(challenge.id); }} disabled={loading}
