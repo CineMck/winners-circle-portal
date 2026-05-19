@@ -3,23 +3,11 @@ import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
-
-webpush.setVapidDetails(
-  'mailto:' + (process.env.RESEND_FROM_EMAIL || 'hello@example.com'),
-  process.env.VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
-
 // POST /api/push/send — send a push to one or all users
 // Body: { userIds?: string[], title, body, url }
 export async function POST(req: NextRequest) {
   try {
-    // Verify caller is admin or internal (service-role)
+    // Verify caller is admin or moderator
     const supabase = await createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -28,6 +16,19 @@ export async function POST(req: NextRequest) {
     if (!profile || !['admin', 'moderator'].includes(profile.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    // Initialise VAPID inside the handler so it only runs at request time, not build time
+    webpush.setVapidDetails(
+      'mailto:' + (process.env.RESEND_FROM_EMAIL || 'hello@example.com'),
+      process.env.VAPID_PUBLIC_KEY!,
+      process.env.VAPID_PRIVATE_KEY!
+    );
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
 
     const { userIds, title, body, url = '/' } = await req.json();
 
