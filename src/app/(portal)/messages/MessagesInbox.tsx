@@ -46,8 +46,14 @@ export default function MessagesInbox({ profile, conversations, members }: Props
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ recipientId }),
     });
-    const { conversationId } = await res.json();
-    router.push(`/messages/${conversationId}`);
+    const json = await res.json();
+    if (json.conversationId) {
+      router.push(`/messages/${json.conversationId}`);
+    } else {
+      console.error('Failed to start conversation:', json);
+      alert('Could not start conversation. Please try again.');
+      setStarting(false);
+    }
   }
 
   const filtered = conversations.filter(c =>
