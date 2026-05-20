@@ -1,6 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import MessagesInbox from './MessagesInbox';
+
+const supabaseAdmin = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { autoRefreshToken: false, persistSession: false } }
+);
 
 export default async function MessagesPage() {
   try {
@@ -10,33 +17,23 @@ export default async function MessagesPage() {
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
 
-    // Get all conversations for this user with other participant info + last message
-    const { data: participantRows, error: partErr } = await supabase
+    // Use admin client to bypass RLS on conversation_participants
+    const { data: participantRows } = await supabaseAdmin
       .from('conversation_participants')
       .select('conversation_id, last_read_at')
       .eq('user_id', user.id);
-
-    // If the table doesn't exist yet (migration not run), render empty state gracefully
-    if (partErr) {
-      const { data: members } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, tier, username')
-        .neq('id', user.id)
-        .order('full_name');
-      return <MessagesInbox profile={profile} conversations={[]} members={members || []} />;
-    }
 
     const convIds = (participantRows || []).map(r => r.conversation_id);
 
     let conversations: unknown[] = [];
     if (convIds.length > 0) {
-      const { data: otherParticipants } = await supabase
+      const { data: otherParticipants } = await supabaseAdmin
         .from('conversation_participants')
         .select('conversation_id, user_id, profiles:profiles!user_id(id, full_name, avatar_url, tier, username)')
         .in('conversation_id', convIds)
         .neq('user_id', user.id);
 
-      const { data: lastMessages } = await supabase
+      const { data: lastMessages } = await supabaseAdmin
         .from('messages')
         .select('conversation_id, content, created_at, sender_id')
         .in('conversation_id', convIds)
@@ -74,9 +71,7 @@ export default async function MessagesPage() {
     return (
       <div style={{ padding: '48px', textAlign: 'center' }}>
         <div style={{ fontSize: '40px', marginBottom: '12px' }}>⚠️</div>
-        <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
-          Messages could not load. Please make sure the database migration has been run.
-        </p>
+        <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Messages could not load. Please try again.</p>
       </div>
     );
   }
