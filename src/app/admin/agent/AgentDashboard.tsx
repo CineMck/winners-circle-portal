@@ -115,6 +115,25 @@ export default function AgentDashboard({ initialReports, members, cronSecret }: 
     ));
   }
 
+  // Bulk approval helpers
+  function approveAll() {
+    setLocalOutreach(prev => prev.map(item =>
+      item.sent || item.approved === false ? item : { ...item, approved: true }
+    ));
+  }
+
+  function approveByType(type: 'props' | 'encourage') {
+    setLocalOutreach(prev => prev.map(item =>
+      item.type === type && !item.sent && item.approved !== false ? { ...item, approved: true } : item
+    ));
+  }
+
+  function unapproveAll() {
+    setLocalOutreach(prev => prev.map(item =>
+      item.sent ? item : { ...item, approved: null }
+    ));
+  }
+
   // Edit a message inline
   function editMessage(userId: string, newMsg: string) {
     setLocalOutreach(prev => prev.map(item =>
@@ -290,20 +309,57 @@ export default function AgentDashboard({ initialReports, members, cronSecret }: 
 
             {/* Outreach suggestions */}
             <div style={{ background: 'var(--black-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: 700 }}>Outreach Queue</div>
-                  <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Messages will be sent from John&apos;s account. Edit any message before approving.</div>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 700 }}>Outreach Queue</div>
+                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>Messages will be sent from John&apos;s account. Edit any message before approving.</div>
+                  </div>
+                  {approvedCount > 0 && (
+                    <button
+                      onClick={sendOutreach}
+                      disabled={sendingOutreach}
+                      className="btn-gold"
+                      style={{ padding: '10px 20px', fontSize: '13px', flexShrink: 0, opacity: sendingOutreach ? 0.6 : 1 }}
+                    >
+                      {sendingOutreach ? 'Sending…' : `Send ${approvedCount} Message${approvedCount !== 1 ? 's' : ''} as John`}
+                    </button>
+                  )}
                 </div>
-                {approvedCount > 0 && (
-                  <button
-                    onClick={sendOutreach}
-                    disabled={sendingOutreach}
-                    className="btn-gold"
-                    style={{ padding: '10px 20px', fontSize: '13px', flexShrink: 0, opacity: sendingOutreach ? 0.6 : 1 }}
-                  >
-                    {sendingOutreach ? 'Sending…' : `Send ${approvedCount} Message${approvedCount !== 1 ? 's' : ''} as John`}
-                  </button>
+                {/* Bulk action buttons */}
+                {localOutreach.filter(i => i.approved !== false && !i.sent).length > 0 && (
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={approveAll}
+                      style={{ fontSize: '12px', fontWeight: 600, color: '#10b981', background: '#0d1a0d', border: '1px solid #10b981', borderRadius: '6px', padding: '5px 12px', cursor: 'pointer' }}
+                    >
+                      ✓ Approve All
+                    </button>
+                    {localOutreach.filter(i => i.type === 'props' && i.approved !== false && !i.sent).length > 0 && (
+                      <button
+                        onClick={() => approveByType('props')}
+                        style={{ fontSize: '12px', fontWeight: 600, color: '#10b981', background: 'transparent', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '5px 12px', cursor: 'pointer' }}
+                      >
+                        ✓ Approve Props ({localOutreach.filter(i => i.type === 'props' && i.approved !== false && !i.sent).length})
+                      </button>
+                    )}
+                    {localOutreach.filter(i => i.type === 'encourage' && i.approved !== false && !i.sent).length > 0 && (
+                      <button
+                        onClick={() => approveByType('encourage')}
+                        style={{ fontSize: '12px', fontWeight: 600, color: '#f59e0b', background: 'transparent', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '5px 12px', cursor: 'pointer' }}
+                      >
+                        ✓ Approve Check-ins ({localOutreach.filter(i => i.type === 'encourage' && i.approved !== false && !i.sent).length})
+                      </button>
+                    )}
+                    {approvedCount > 0 && (
+                      <button
+                        onClick={unapproveAll}
+                        style={{ fontSize: '12px', fontWeight: 600, color: 'var(--muted)', background: 'transparent', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '5px 12px', cursor: 'pointer' }}
+                      >
+                        ✕ Clear All
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
