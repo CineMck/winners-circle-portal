@@ -511,10 +511,10 @@ export default function EmailComposer({
 
         {/* Subject */}
         <div style={panelCard}>
-          <label style={labelStyle}>Subject Line</label>
+          <label style={labelStyle}>Subject Line <span style={{ color: '#ef4444' }}>*</span></label>
           <input value={subject} onChange={e => setSubject(e.target.value)}
-            placeholder="🏆 This Week in The Winner's Circle"
-            style={inputStyle} />
+            placeholder="Enter your email subject…"
+            style={{ ...inputStyle, border: `1px solid ${!subject.trim() ? '#ef444466' : '#2a2a2a'}` }} />
         </div>
 
         {/* Add blocks */}
@@ -544,11 +544,17 @@ export default function EmailComposer({
             style={{ background: '#1a1a1a', border: '1px solid #60a5fa44', borderRadius: '8px', padding: '10px', cursor: 'pointer', color: '#60a5fa', fontSize: '13px', fontWeight: 700 }}>
             📄 Save as Template
           </button>
-          <button onClick={() => setConfirmSend(true)} disabled={sending || !subject.trim() || blocks.length === 0}
+          <button
+            onClick={() => {
+              if (!subject.trim()) { setResult({ type: 'error', message: '⚠️ Please enter a subject line before sending.' }); return; }
+              if (blocks.length === 0) { setResult({ type: 'error', message: '⚠️ Add at least one content block.' }); return; }
+              setConfirmSend(true);
+            }}
+            disabled={sending}
             style={{
-              background: sending || !subject.trim() || blocks.length === 0 ? '#5a4a20' : '#c9a84c',
+              background: sending ? '#5a4a20' : '#c9a84c',
               color: '#0a0a0a', border: 'none', borderRadius: '8px',
-              padding: '12px', cursor: sending || !subject.trim() || blocks.length === 0 ? 'not-allowed' : 'pointer',
+              padding: '12px', cursor: sending ? 'not-allowed' : 'pointer',
               fontSize: '14px', fontWeight: 800,
             }}>
             {sending ? `Sending…` : `✉️ Send to ${selectedCount}`}
@@ -579,12 +585,13 @@ export default function EmailComposer({
             <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '2px' }}>Private Mastermind Community</div>
           </div>
 
-          {/* Subject preview */}
-          {subject && (
-            <div style={{ background: '#111', borderLeft: '1px solid #1e1e1e', borderRight: '1px solid #1e1e1e', padding: '16px 24px 4px' }}>
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{subject}</h2>
-            </div>
-          )}
+          {/* Subject preview — always visible */}
+          <div style={{ background: '#111', borderLeft: '1px solid #1e1e1e', borderRight: '1px solid #1e1e1e', padding: '16px 24px 4px' }}>
+            {subject.trim()
+              ? <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{subject}</h2>
+              : <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#333', lineHeight: 1.3, fontStyle: 'italic' }}>Email subject will appear here…</h2>
+            }
+          </div>
 
           {/* Blocks canvas */}
           <div
