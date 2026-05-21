@@ -180,32 +180,8 @@ export default function PortalShell({ profile, channels, children }: Props) {
           })}
         </div>
 
-        {/* Channels */}
-        <div style={{ padding: '8px 12px', flex: 1 }}>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', letterSpacing: '1px', marginBottom: '8px', paddingLeft: '8px' }}>
-            CHANNELS
-          </div>
-          {channels.map(channel => {
-            const hasAccess = canAccessTier(profile?.tier || 'free', channel.tier_required);
-            const active = pathname === `/community/${channel.slug}`;
-            return (
-              <Link key={channel.id} href={hasAccess ? `/community/${channel.slug}` : '/upgrade'}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '7px 10px', borderRadius: '8px', marginBottom: '2px',
-                  background: active ? 'var(--gold-dim)' : 'transparent',
-                  opacity: hasAccess ? 1 : 0.4,
-                  transition: 'all 0.15s',
-                }}>
-                <span style={{ color: active ? 'var(--gold)' : 'var(--muted)', fontSize: '14px' }}>#</span>
-                <span style={{ fontSize: '13px', color: active ? 'var(--gold)' : 'var(--text)' }}>
-                  {channel.name.toLowerCase()}
-                </span>
-                {!hasAccess && <span style={{ marginLeft: 'auto', fontSize: '10px' }}>🔒</span>}
-              </Link>
-            );
-          })}
-        </div>
+        {/* Nav flex spacer */}
+        <div style={{ flex: 1 }} />
 
         {/* Bottom: member info + sign out */}
         <div style={{ padding: '12px', borderTop: '1px solid var(--border)' }}>

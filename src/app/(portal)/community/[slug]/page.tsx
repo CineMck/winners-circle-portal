@@ -7,10 +7,17 @@ export default async function ChannelPage({ params }: { params: Promise<{ slug: 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: channel } = await supabase.from('channels').select('*').eq('slug', slug).single();
-  if (!channel) notFound();
+  const [
+    { data: channel },
+    { data: profile },
+    { data: allChannels },
+  ] = await Promise.all([
+    supabase.from('channels').select('*').eq('slug', slug).single(),
+    supabase.from('profiles').select('*').eq('id', user!.id).single(),
+    supabase.from('channels').select('*').eq('is_archived', false).order('sort_order'),
+  ]);
 
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user!.id).single();
+  if (!channel) notFound();
 
   const { data: posts } = await supabase
     .from('posts')
@@ -21,5 +28,12 @@ export default async function ChannelPage({ params }: { params: Promise<{ slug: 
     .order('created_at', { ascending: false })
     .limit(50);
 
-  return <ChannelView channel={channel} profile={profile} initialPosts={posts || []} />;
+  return (
+    <ChannelView
+      channel={channel}
+      profile={profile}
+      initialPosts={posts || []}
+      allChannels={allChannels || []}
+    />
+  );
 }
