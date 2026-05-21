@@ -118,7 +118,7 @@ function BlockProperties({ block, onChange }: { block: Block; onChange: (b: Bloc
             </div>
           </div>
           {block.url && (
-            <img src={block.url} alt="preview" style={{ width: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '6px' }} onError={e => (e.currentTarget.style.display = 'none')} />
+            <img src={block.url} alt="preview" style={{ width: '100%', borderRadius: '6px', display: 'block' }} onError={e => (e.currentTarget.style.display = 'none')} />
           )}
           <div>
             <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Alt Text</label>
@@ -151,7 +151,7 @@ function BlockProperties({ block, onChange }: { block: Block; onChange: (b: Bloc
           {videoError && <div style={{ fontSize: '12px', color: '#ef4444', padding: '6px 10px', background: 'rgba(239,68,68,0.1)', borderRadius: '6px' }}>⚠️ {videoError}</div>}
           {block.thumbnailUrl && (
             <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
-              <img src={block.thumbnailUrl} alt="thumbnail" style={{ width: '100%', maxHeight: '120px', objectFit: 'cover', display: 'block' }} />
+              <img src={block.thumbnailUrl} alt="thumbnail" style={{ width: '100%', display: 'block' }} />
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ width: 36, height: 36, background: 'rgba(0,0,0,0.7)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '15px', paddingLeft: '3px' }}>▶</div>
               </div>
@@ -244,7 +244,7 @@ function CanvasBlock({
 
       case 'image':
         return block.url
-          ? <img src={block.url} alt={block.alt} style={{ width: '100%', borderRadius: '6px', display: 'block', maxHeight: '160px', objectFit: 'cover' }} onError={e => (e.currentTarget.style.display = 'none')} />
+          ? <img src={block.url} alt={block.alt} style={{ width: '100%', borderRadius: '6px', display: 'block' }} onError={e => (e.currentTarget.style.display = 'none')} />
           : <div style={{ background: '#1a1a1a', border: '1px dashed #333', borderRadius: '6px', padding: '24px', textAlign: 'center', color: '#444', fontSize: '12px' }}>🖼 Image — click to add URL or upload</div>;
 
       case 'video':
@@ -252,7 +252,7 @@ function CanvasBlock({
           <div style={{ position: 'relative', borderRadius: '6px', overflow: 'hidden' }}>
             {block.thumbnailUrl
               ? <>
-                  <img src={block.thumbnailUrl} alt="video" style={{ width: '100%', display: 'block', maxHeight: '140px', objectFit: 'cover' }} />
+                  <img src={block.thumbnailUrl} alt="video" style={{ width: '100%', display: 'block' }} />
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ width: 36, height: 36, background: 'rgba(0,0,0,0.75)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', paddingLeft: '3px' }}>▶</div>
                   </div>
