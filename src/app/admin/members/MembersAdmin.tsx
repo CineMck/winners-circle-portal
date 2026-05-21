@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import { Profile, MemberTier, UserRole, getTierColor, getTierLabel } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 
@@ -188,6 +189,10 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
                         </>
                       ) : (
                         <>
+                          <Link href={`/admin/members/${member.id}`}
+                            style={{ background: 'var(--gold)', color: '#0a0a0a', border: 'none', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>
+                            View
+                          </Link>
                           <button onClick={() => startEdit(member)}
                             style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', color: 'var(--text)' }}>
                             Edit
