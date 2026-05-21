@@ -228,7 +228,7 @@ Only include members where there's a genuine reason to reach out. Quality over q
     const userPrompt = `Here is this week's member activity data:\n\n${JSON.stringify(memberSummaries, null, 2)}\n\nGenerate the daily report.`;
 
     let analysisJson: { summary: string; propsTo: Array<{ userId: string; name: string; reason: string; message: string }>; encourage: Array<{ userId: string; name: string; reason: string; message: string }> } = {
-      summary: 'Could not generate AI analysis. Check XAI_API_KEY.',
+      summary: 'Could not generate AI analysis. Check ANTHROPIC_API_KEY in Railway environment variables.',
       propsTo: [],
       encourage: [],
     };
