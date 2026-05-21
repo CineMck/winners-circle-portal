@@ -656,8 +656,8 @@ function ReferralsTab({ profile, referrals }: { profile: Profile; referrals: Ref
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const activated = referrals.filter(r => r.status === 'activated' || r.referred_user_id);
-  const pending   = referrals.filter(r => r.status === 'pending' && !r.referred_user_id);
+  const activated = referrals.filter(r => r.status === 'activated' || r.referred_user);
+  const pending   = referrals.filter(r => r.status === 'pending' && !r.referred_user);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
