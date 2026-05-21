@@ -1,5 +1,5 @@
-import EmailComposer from './EmailComposer';
 import { createClient } from '@supabase/supabase-js';
+import EmailMarketingShell from './EmailMarketingShell';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,19 +8,22 @@ const supabaseAdmin = createClient(
 );
 
 export default async function EmailMarketingPage() {
-  // Get member counts per tier for the recipient selector
   const [
     { count: allCount },
     { count: paidCount },
     { count: coreCount },
     { count: eliteCount },
     { count: foundingCount },
+    { data: campaigns },
+    { data: templates },
   ] = await Promise.all([
     supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }),
     supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).in('tier', ['core', 'elite', 'founding']),
     supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('tier', 'core'),
     supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('tier', 'elite'),
     supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('tier', 'founding'),
+    supabaseAdmin.from('email_campaigns').select('id,name,subject,tier,status,sent_at,recipient_count,created_at').order('created_at', { ascending: false }),
+    supabaseAdmin.from('email_templates').select('id,name,description,blocks,created_at').order('created_at', { ascending: false }),
   ]);
 
   const tierCounts = {
@@ -31,5 +34,11 @@ export default async function EmailMarketingPage() {
     founding: foundingCount || 0,
   };
 
-  return <EmailComposer tierCounts={tierCounts} />;
+  return (
+    <EmailMarketingShell
+      tierCounts={tierCounts}
+      initialCampaigns={campaigns || []}
+      initialTemplates={templates || []}
+    />
+  );
 }

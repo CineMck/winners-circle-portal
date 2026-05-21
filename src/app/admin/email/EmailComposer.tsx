@@ -1,133 +1,46 @@
 'use client';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-
-// ─── Block types ─────────────────────────────────────────────────────────────
-type HeadingBlock  = { id: string; type: 'heading'; text: string };
-type TextBlock     = { id: string; type: 'text'; text: string };
-type ImageBlock    = { id: string; type: 'image'; url: string; alt: string; linkUrl: string };
-type VideoBlock    = { id: string; type: 'video'; videoUrl: string; thumbnailUrl: string; caption: string; platform: string };
-type ButtonBlock   = { id: string; type: 'button'; label: string; href: string };
-type DividerBlock  = { id: string; type: 'divider' };
-type Block = HeadingBlock | TextBlock | ImageBlock | VideoBlock | ButtonBlock | DividerBlock;
+import {
+  type Block, type HeadingBlock, type TextBlock, type ImageBlock,
+  type VideoBlock, type ButtonBlock, type SpacerBlock,
+  BLOCK_TYPES, BLOCK_COLORS, BLOCK_ICONS, makeBlock, blocksToHtml,
+} from '@/lib/email/blocks';
 
 interface TierCounts { all: number; paid: number; core: number; elite: number; founding: number }
 
 const TIER_OPTIONS = [
-  { value: 'all',      label: 'All Members',          desc: 'Everyone including free',    color: '#888' },
-  { value: 'paid',     label: 'All Paid Members',      desc: 'Core, Elite & Founding',     color: '#c9a84c' },
-  { value: 'core',     label: 'Core Members',          desc: 'Core tier only',             color: '#c9a84c' },
-  { value: 'elite',    label: 'Elite Members',         desc: 'Elite tier only',            color: '#e0c068' },
-  { value: 'founding', label: 'Founding Members',      desc: 'Founding tier only',         color: '#ffd700' },
+  { value: 'all',      label: 'All Members',     color: '#888' },
+  { value: 'paid',     label: 'All Paid',         color: '#c9a84c' },
+  { value: 'core',     label: 'Core',             color: '#c9a84c' },
+  { value: 'elite',    label: 'Elite',            color: '#e0c068' },
+  { value: 'founding', label: 'Founding',         color: '#ffd700' },
 ];
 
-const uid = () => Math.random().toString(36).slice(2, 10);
-
-// ─── HTML generation ─────────────────────────────────────────────────────────
-function blocksToHtml(blocks: Block[]): string {
-  return blocks.map(b => {
-    switch (b.type) {
-      case 'heading':
-        return `<h2 style="margin:0 0 16px;font-size:24px;font-weight:800;color:#ffffff;line-height:1.3;">${escHtml(b.text)}</h2>`;
-
-      case 'text':
-        return `<p style="margin:0 0 16px;font-size:15px;color:#cccccc;line-height:1.7;">${escHtml(b.text).replace(/\n/g, '<br>')}</p>`;
-
-      case 'image': {
-        const img = `<img src="${escAttr(b.url)}" alt="${escAttr(b.alt)}" width="100%" style="display:block;width:100%;border-radius:8px;margin-bottom:16px;" />`;
-        return b.linkUrl
-          ? `<a href="${escAttr(b.linkUrl)}" target="_blank" style="display:block;">${img}</a>`
-          : img;
-      }
-
-      case 'video': {
-        const playBtn = `
-          <table width="60" height="60" cellpadding="0" cellspacing="0" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
-            <tr><td align="center" valign="middle" style="width:60px;height:60px;background:rgba(0,0,0,0.72);border-radius:50%;">
-              <span style="color:#ffffff;font-size:22px;line-height:1;padding-left:4px;">&#9654;</span>
-            </td></tr>
-          </table>`;
-        return `
-          <div style="position:relative;margin-bottom:16px;">
-            <a href="${escAttr(b.videoUrl)}" target="_blank" style="display:block;position:relative;">
-              <img src="${escAttr(b.thumbnailUrl)}" width="100%" alt="${escAttr(b.caption || 'Watch video')}" style="display:block;width:100%;border-radius:8px;" />
-              ${playBtn}
-            </a>
-            ${b.caption ? `<p style="margin:8px 0 0;font-size:13px;color:#888;text-align:center;">${escHtml(b.caption)}</p>` : ''}
-          </div>`;
-      }
-
-      case 'button':
-        return `
-          <div style="text-align:center;margin-bottom:20px;">
-            <a href="${escAttr(b.href)}" target="_blank"
-               style="display:inline-block;background:#c9a84c;color:#0a0a0a;font-weight:800;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:0.3px;">
-              ${escHtml(b.label)}
-            </a>
-          </div>`;
-
-      case 'divider':
-        return `<hr style="border:none;border-top:1px solid #2a2a2a;margin:20px 0;" />`;
-
-      default: return '';
-    }
-  }).join('\n');
+interface Props {
+  tierCounts: TierCounts;
+  initialBlocks?: Block[];
+  initialSubject?: string;
+  initialName?: string;
+  initialTier?: string;
+  campaignId?: string;
+  onSaved?: () => void;
+  onTemplateSaved?: () => void;
 }
 
-function escHtml(s: string) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function escAttr(s: string) { return s.replace(/"/g,'&quot;'); }
-
-function wrapInTemplate(subject: string, body: string, appUrl: string) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><title>${subject}</title></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
-<tr><td align="center"><table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-<tr><td style="background:#111;border:1px solid #1e1e1e;border-top:4px solid #c9a84c;border-radius:16px 16px 0 0;padding:28px 36px;text-align:center;">
-  <div style="font-size:32px;margin-bottom:8px;">🏆</div>
-  <div style="font-size:20px;font-weight:800;color:#c9a84c;">The Winner's Circle</div>
-  <div style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:1px;margin-top:4px;">Private Mastermind Community</div>
-</td></tr>
-<tr><td style="background:#111;border-left:1px solid #1e1e1e;border-right:1px solid #1e1e1e;padding:32px 36px;">
-${body}
-</td></tr>
-<tr><td style="background:#111;border-left:1px solid #1e1e1e;border-right:1px solid #1e1e1e;padding:0 36px 32px;text-align:center;">
-  <a href="${appUrl}/home" style="display:inline-block;background:#c9a84c;color:#0a0a0a;font-weight:800;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">Open The Winner's Circle →</a>
-</td></tr>
-<tr><td style="background:#0d0d0d;border:1px solid #1e1e1e;border-top:1px solid #1a1a1a;border-radius:0 0 16px 16px;padding:20px 36px;text-align:center;">
-  <p style="margin:0;font-size:12px;color:#555;">You're receiving this as a member of The Winner's Circle.<br/>
-  <a href="${appUrl}/profile" style="color:#888;text-decoration:underline;">Manage your account</a></p>
-</td></tr>
-</table></td></tr></table></body></html>`;
-}
-
-// ─── Individual block editors ─────────────────────────────────────────────────
-function BlockCard({
-  block, index, total,
-  onChange, onDelete, onMove,
-}: {
-  block: Block; index: number; total: number;
-  onChange: (b: Block) => void;
-  onDelete: () => void;
-  onMove: (dir: -1 | 1) => void;
-}) {
+// ─── Right panel: block property editors ──────────────────────────────────────
+function BlockProperties({ block, onChange }: { block: Block; onChange: (b: Block) => void }) {
   const supabase = createClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [videoLoading, setVideoLoading] = useState(false);
   const [videoError, setVideoError] = useState('');
+  const [videoInput, setVideoInput] = useState(block.type === 'video' ? block.videoUrl : '');
 
   const inp: React.CSSProperties = {
     width: '100%', background: '#1a1a1a', border: '1px solid #333',
     borderRadius: '8px', padding: '9px 12px', color: '#fff',
     fontSize: '13px', outline: 'none', boxSizing: 'border-box',
-  };
-
-  const typeColors: Record<string, string> = {
-    heading: '#c9a84c', text: '#60a5fa', image: '#22c55e',
-    video: '#a78bfa', button: '#f97316', divider: '#888',
-  };
-  const typeIcons: Record<string, string> = {
-    heading: 'H', text: '¶', image: '🖼', video: '▶', button: '⬜', divider: '—',
   };
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -141,460 +54,666 @@ function BlockCard({
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path);
       onChange({ ...block, url: publicUrl } as ImageBlock);
-    } catch (err) {
-      alert('Upload failed: ' + String(err));
-    }
+    } catch (err) { alert('Upload failed: ' + String(err)); }
     setUploading(false);
   }
 
   async function fetchVideoThumbnail(url: string) {
-    if (block.type !== 'video') return;
-    if (!url.trim()) return;
+    if (!url.trim() || block.type !== 'video') return;
     setVideoLoading(true);
     setVideoError('');
     try {
       const res = await fetch(`/api/admin/video-thumbnail?url=${encodeURIComponent(url)}`);
       const data = await res.json();
-      if (!res.ok) { setVideoError(data.error || 'Could not fetch thumbnail'); }
-      else {
-        onChange({ ...block, videoUrl: url, thumbnailUrl: data.thumbnailUrl, platform: data.platform } as VideoBlock);
-      }
+      if (!res.ok) setVideoError(data.error || 'Could not fetch thumbnail');
+      else onChange({ ...block, videoUrl: url, thumbnailUrl: data.thumbnailUrl, platform: data.platform } as VideoBlock);
     } catch (e) { setVideoError(String(e)); }
     setVideoLoading(false);
   }
 
-  const tc = typeColors[block.type] || '#888';
+  const tc = BLOCK_COLORS[block.type] || '#888';
 
   return (
-    <div style={{
-      background: '#141414', border: '1px solid #222',
-      borderLeft: `3px solid ${tc}`, borderRadius: '10px',
-      marginBottom: '10px', overflow: 'hidden',
-    }}>
-      {/* Block header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderBottom: '1px solid #1e1e1e' }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: '6px',
-          background: `${tc}22`, color: tc,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '12px', fontWeight: 800, flexShrink: 0,
-        }}>
-          {typeIcons[block.type]}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      {/* Block type badge */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingBottom: '12px', borderBottom: '1px solid #222' }}>
+        <div style={{ width: 28, height: 28, borderRadius: '6px', background: `${tc}22`, color: tc, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 800 }}>
+          {BLOCK_ICONS[block.type]}
         </div>
-        <span style={{ fontSize: '12px', fontWeight: 700, color: tc, textTransform: 'uppercase', letterSpacing: '0.5px', flex: 1 }}>
-          {block.type}
-        </span>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <button onClick={() => onMove(-1)} disabled={index === 0} title="Move up"
-            style={{ background: 'none', border: '1px solid #333', borderRadius: '5px', padding: '3px 7px', cursor: index === 0 ? 'not-allowed' : 'pointer', color: '#888', fontSize: '12px', opacity: index === 0 ? 0.3 : 1 }}>↑</button>
-          <button onClick={() => onMove(1)} disabled={index === total - 1} title="Move down"
-            style={{ background: 'none', border: '1px solid #333', borderRadius: '5px', padding: '3px 7px', cursor: index === total - 1 ? 'not-allowed' : 'pointer', color: '#888', fontSize: '12px', opacity: index === total - 1 ? 0.3 : 1 }}>↓</button>
-          <button onClick={onDelete} title="Delete block"
-            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '5px', padding: '3px 8px', cursor: 'pointer', color: '#ef4444', fontSize: '12px' }}>✕</button>
-        </div>
+        <span style={{ fontSize: '13px', fontWeight: 700, color: tc, textTransform: 'capitalize' }}>{block.type} Block</span>
       </div>
 
-      {/* Block editor body */}
-      <div style={{ padding: '12px 14px' }}>
+      {/* HEADING */}
+      {block.type === 'heading' && (
+        <div>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Heading Text</label>
+          <input value={block.text} onChange={e => onChange({ ...block, text: e.target.value } as HeadingBlock)}
+            placeholder="Section heading…" style={{ ...inp, fontSize: '15px', fontWeight: 700 }} />
+        </div>
+      )}
 
-        {/* HEADING */}
-        {block.type === 'heading' && (
-          <input value={block.text} onChange={e => onChange({ ...block, text: e.target.value })}
-            placeholder="Section heading…" style={{ ...inp, fontSize: '16px', fontWeight: 700 }} />
-        )}
-
-        {/* TEXT */}
-        {block.type === 'text' && (
-          <textarea value={block.text} onChange={e => onChange({ ...block, text: e.target.value })}
-            placeholder="Write your paragraph here…" rows={4}
+      {/* TEXT */}
+      {block.type === 'text' && (
+        <div>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Paragraph Text</label>
+          <textarea value={block.text} onChange={e => onChange({ ...block, text: e.target.value } as TextBlock)}
+            placeholder="Write your paragraph here…" rows={6}
             style={{ ...inp, resize: 'vertical', lineHeight: '1.6' }} />
-        )}
+        </div>
+      )}
 
-        {/* IMAGE */}
-        {block.type === 'image' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {/* IMAGE */}
+      {block.type === 'image' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Image</label>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <input value={block.url} onChange={e => onChange({ ...block, url: e.target.value })}
+              <input value={block.url} onChange={e => onChange({ ...block, url: e.target.value } as ImageBlock)}
                 placeholder="Image URL (https://…)" style={{ ...inp, flex: 1 }} />
               <button onClick={() => fileRef.current?.click()} disabled={uploading}
                 style={{ background: '#1e1e1e', border: '1px solid #333', borderRadius: '8px', padding: '0 12px', cursor: 'pointer', color: '#ccc', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                {uploading ? 'Uploading…' : '⬆ Upload'}
+                {uploading ? '…' : '⬆ Upload'}
               </button>
               <input ref={fileRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
             </div>
-            {block.url && (
-              <img src={block.url} alt="preview" style={{ width: '100%', maxHeight: '160px', objectFit: 'cover', borderRadius: '6px', marginTop: '4px' }} onError={e => (e.currentTarget.style.display = 'none')} />
-            )}
-            <input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value })}
-              placeholder="Alt text (optional)" style={{ ...inp, fontSize: '12px' }} />
-            <input value={block.linkUrl} onChange={e => onChange({ ...block, linkUrl: e.target.value })}
-              placeholder="Link URL when clicked (optional)" style={{ ...inp, fontSize: '12px' }} />
           </div>
-        )}
+          {block.url && (
+            <img src={block.url} alt="preview" style={{ width: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '6px' }} onError={e => (e.currentTarget.style.display = 'none')} />
+          )}
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Alt Text</label>
+            <input value={block.alt} onChange={e => onChange({ ...block, alt: e.target.value } as ImageBlock)}
+              placeholder="Describe the image…" style={inp} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Link URL (optional)</label>
+            <input value={block.linkUrl} onChange={e => onChange({ ...block, linkUrl: e.target.value } as ImageBlock)}
+              placeholder="https://…" style={inp} />
+          </div>
+        </div>
+      )}
 
-        {/* VIDEO */}
-        {block.type === 'video' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {/* VIDEO */}
+      {block.type === 'video' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>YouTube or Vimeo URL</label>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                defaultValue={block.videoUrl}
-                onBlur={e => fetchVideoThumbnail(e.target.value)}
-                placeholder="YouTube or Vimeo URL…"
-                style={{ ...inp, flex: 1 }}
-              />
-              <button
-                onClick={() => {
-                  const el = document.querySelector(`[data-videoid="${block.id}"]`) as HTMLInputElement;
-                  if (el) fetchVideoThumbnail(el.value);
-                }}
-                disabled={videoLoading}
+              <input value={videoInput} onChange={e => setVideoInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') fetchVideoThumbnail(videoInput); }}
+                placeholder="https://youtube.com/watch?v=…" style={{ ...inp, flex: 1 }} />
+              <button onClick={() => fetchVideoThumbnail(videoInput)} disabled={videoLoading}
                 style={{ background: '#a78bfa22', border: '1px solid #a78bfa55', borderRadius: '8px', padding: '0 12px', cursor: 'pointer', color: '#a78bfa', fontSize: '12px', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                {videoLoading ? 'Fetching…' : '▶ Fetch'}
+                {videoLoading ? '…' : '▶ Load'}
               </button>
             </div>
-            {/* Hidden input with block id for the fetch button */}
-            <input data-videoid={block.id} defaultValue={block.videoUrl} style={{ display: 'none' }} onChange={e => onChange({ ...block, videoUrl: e.target.value } as VideoBlock)} />
-            {videoError && <div style={{ fontSize: '12px', color: '#ef4444', padding: '6px 10px', background: 'rgba(239,68,68,0.1)', borderRadius: '6px' }}>⚠️ {videoError}</div>}
-            {block.thumbnailUrl && (
-              <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
-                <img src={block.thumbnailUrl} alt="thumbnail" style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', display: 'block' }} />
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ width: 40, height: 40, background: 'rgba(0,0,0,0.7)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '16px', paddingLeft: '3px' }}>▶</div>
-                </div>
-                <div style={{ position: 'absolute', top: 6, right: 6, background: '#a78bfa', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '10px', textTransform: 'uppercase' }}>{block.platform}</div>
+          </div>
+          {videoError && <div style={{ fontSize: '12px', color: '#ef4444', padding: '6px 10px', background: 'rgba(239,68,68,0.1)', borderRadius: '6px' }}>⚠️ {videoError}</div>}
+          {block.thumbnailUrl && (
+            <div style={{ position: 'relative', borderRadius: '8px', overflow: 'hidden' }}>
+              <img src={block.thumbnailUrl} alt="thumbnail" style={{ width: '100%', maxHeight: '120px', objectFit: 'cover', display: 'block' }} />
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 36, height: 36, background: 'rgba(0,0,0,0.7)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '15px', paddingLeft: '3px' }}>▶</div>
               </div>
-            )}
-            <input value={block.caption} onChange={e => onChange({ ...block, caption: e.target.value })}
-              placeholder="Caption (optional)" style={{ ...inp, fontSize: '12px' }} />
-          </div>
-        )}
-
-        {/* BUTTON */}
-        {block.type === 'button' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <input value={block.label} onChange={e => onChange({ ...block, label: e.target.value })}
-              placeholder="Button label (e.g. Watch Now →)" style={inp} />
-            <input value={block.href} onChange={e => onChange({ ...block, href: e.target.value })}
-              placeholder="Link URL (https://…)" style={{ ...inp, fontSize: '12px' }} />
-            <div style={{ textAlign: 'center', marginTop: '4px' }}>
-              <span style={{ display: 'inline-block', background: '#c9a84c', color: '#0a0a0a', fontWeight: 800, fontSize: '13px', padding: '8px 22px', borderRadius: '8px' }}>
-                {block.label || 'Button Label'}
-              </span>
+              {block.platform && <div style={{ position: 'absolute', top: 6, right: 6, background: '#a78bfa', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '10px', textTransform: 'uppercase' }}>{block.platform}</div>}
             </div>
+          )}
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Caption (optional)</label>
+            <input value={block.caption} onChange={e => onChange({ ...block, caption: e.target.value } as VideoBlock)}
+              placeholder="Caption below video…" style={inp} />
           </div>
-        )}
-
-        {/* DIVIDER */}
-        {block.type === 'divider' && (
-          <div style={{ padding: '6px 0' }}>
-            <hr style={{ border: 'none', borderTop: '1px solid #333', margin: 0 }} />
-            <p style={{ margin: '6px 0 0', fontSize: '11px', color: '#555', textAlign: 'center' }}>Horizontal divider</p>
-          </div>
-        )}
-
-      </div>
-    </div>
-  );
-}
-
-// ─── Add Block toolbar ────────────────────────────────────────────────────────
-function AddBlockBar({ onAdd }: { onAdd: (type: Block['type']) => void }) {
-  const blocks: { type: Block['type']; label: string; icon: string; color: string }[] = [
-    { type: 'heading',  label: 'Heading',  icon: 'H',  color: '#c9a84c' },
-    { type: 'text',     label: 'Text',     icon: '¶',  color: '#60a5fa' },
-    { type: 'image',    label: 'Image',    icon: '🖼', color: '#22c55e' },
-    { type: 'video',    label: 'Video',    icon: '▶',  color: '#a78bfa' },
-    { type: 'button',   label: 'Button',   icon: '⬜', color: '#f97316' },
-    { type: 'divider',  label: 'Divider',  icon: '—',  color: '#888'    },
-  ];
-  return (
-    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', padding: '12px 0 4px' }}>
-      <span style={{ fontSize: '11px', color: '#555', fontWeight: 700, alignSelf: 'center', marginRight: '2px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Add:</span>
-      {blocks.map(b => (
-        <button key={b.type} onClick={() => onAdd(b.type)} style={{
-          display: 'flex', alignItems: 'center', gap: '5px',
-          background: `${b.color}15`, border: `1px solid ${b.color}40`,
-          borderRadius: '20px', padding: '5px 12px', cursor: 'pointer',
-          color: b.color, fontSize: '12px', fontWeight: 600,
-          transition: 'all 0.15s',
-        }}>
-          <span style={{ fontSize: '11px' }}>{b.icon}</span> {b.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ─── Live preview ─────────────────────────────────────────────────────────────
-function EmailPreview({ subject, blocks }: { subject: string; blocks: Block[] }) {
-  return (
-    <div style={{ background: '#0a0a0a', padding: '12px', borderRadius: '8px' }}>
-      <div style={{
-        background: '#111', border: '1px solid #1e1e1e',
-        borderTop: '4px solid #c9a84c', borderRadius: '12px',
-        overflow: 'hidden', fontSize: '13px',
-      }}>
-        {/* Mock email header */}
-        <div style={{ padding: '20px 24px', textAlign: 'center', borderBottom: '1px solid #1e1e1e' }}>
-          <div style={{ fontSize: '22px', marginBottom: '5px' }}>🏆</div>
-          <div style={{ fontWeight: 800, color: '#c9a84c', fontSize: '14px' }}>The Winner&apos;s Circle</div>
-          <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '2px' }}>Private Mastermind Community</div>
         </div>
+      )}
 
-        {/* Content */}
-        <div style={{ padding: '20px 24px' }}>
-          {subject && (
-            <h2 style={{ margin: '0 0 16px', fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{subject}</h2>
-          )}
+      {/* BUTTON */}
+      {block.type === 'button' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Button Label</label>
+            <input value={block.label} onChange={e => onChange({ ...block, label: e.target.value } as ButtonBlock)}
+              placeholder="e.g. Watch Now →" style={inp} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Link URL</label>
+            <input value={block.href} onChange={e => onChange({ ...block, href: e.target.value } as ButtonBlock)}
+              placeholder="https://…" style={inp} />
+          </div>
+          <div style={{ textAlign: 'center', paddingTop: '4px' }}>
+            <span style={{ display: 'inline-block', background: '#c9a84c', color: '#0a0a0a', fontWeight: 800, fontSize: '13px', padding: '8px 22px', borderRadius: '8px' }}>
+              {block.label || 'Button Label'}
+            </span>
+          </div>
+        </div>
+      )}
 
-          {blocks.length === 0 && (
-            <p style={{ color: '#444', fontSize: '13px', fontStyle: 'italic', textAlign: 'center', padding: '24px 0' }}>
-              Add blocks to build your email…
-            </p>
-          )}
+      {/* SPACER */}
+      {block.type === 'spacer' && (
+        <div>
+          <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Spacer Size</label>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {(['sm', 'md', 'lg'] as const).map(size => (
+              <button key={size} onClick={() => onChange({ ...block, size } as SpacerBlock)}
+                style={{ flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '12px', border: `1px solid ${block.size === size ? '#c9a84c' : '#333'}`, background: block.size === size ? 'rgba(201,168,76,0.15)' : '#1a1a1a', color: block.size === size ? '#c9a84c' : '#666' }}>
+                {size.toUpperCase()}
+                <div style={{ fontSize: '10px', fontWeight: 400, color: '#555', marginTop: '2px' }}>
+                  {size === 'sm' ? '16px' : size === 'md' ? '32px' : '48px'}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-          {blocks.map(block => {
-            switch (block.type) {
-              case 'heading':
-                return <div key={block.id} style={{ fontSize: '18px', fontWeight: 800, color: '#fff', marginBottom: '12px', lineHeight: 1.3 }}>{block.text || <span style={{ color: '#444', fontStyle: 'italic' }}>Heading…</span>}</div>;
+      {/* DIVIDER */}
+      {block.type === 'divider' && (
+        <div style={{ padding: '8px 0', textAlign: 'center', color: '#555', fontSize: '12px' }}>
+          <hr style={{ border: 'none', borderTop: '1px solid #333', margin: '0 0 8px' }} />
+          Horizontal rule — no settings needed.
+        </div>
+      )}
+    </div>
+  );
+}
 
-              case 'text':
-                return <div key={block.id} style={{ fontSize: '13px', color: '#ccc', lineHeight: 1.7, marginBottom: '12px', whiteSpace: 'pre-wrap' }}>{block.text || <span style={{ color: '#444', fontStyle: 'italic' }}>Text…</span>}</div>;
+// ─── Canvas block preview row ──────────────────────────────────────────────────
+function CanvasBlock({
+  block, isSelected, isDragOver,
+  onClick, onDelete,
+  onDragStart, onDragOver, onDrop, onDragEnd,
+}: {
+  block: Block;
+  isSelected: boolean;
+  isDragOver: boolean;
+  onClick: () => void;
+  onDelete: () => void;
+  onDragStart: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+}) {
+  const tc = BLOCK_COLORS[block.type] || '#888';
 
-              case 'image':
-                return block.url
-                  ? <img key={block.id} src={block.url} alt={block.alt} style={{ width: '100%', borderRadius: '6px', display: 'block', marginBottom: '12px' }} onError={e => (e.currentTarget.style.display='none')} />
-                  : <div key={block.id} style={{ background: '#1a1a1a', border: '1px dashed #333', borderRadius: '6px', padding: '24px', textAlign: 'center', color: '#444', fontSize: '12px', marginBottom: '12px' }}>🖼 Image will appear here</div>;
+  function renderPreview() {
+    switch (block.type) {
+      case 'heading':
+        return <div style={{ fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{block.text || <span style={{ color: '#444', fontStyle: 'italic' }}>Heading text…</span>}</div>;
 
-              case 'video':
-                return (
-                  <div key={block.id} style={{ position: 'relative', marginBottom: '12px', borderRadius: '6px', overflow: 'hidden' }}>
-                    {block.thumbnailUrl
-                      ? <>
-                          <img src={block.thumbnailUrl} alt="video" style={{ width: '100%', display: 'block' }} />
-                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <div style={{ width: 36, height: 36, background: 'rgba(0,0,0,0.75)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', paddingLeft: '3px' }}>▶</div>
-                          </div>
-                          {block.caption && <div style={{ fontSize: '11px', color: '#888', textAlign: 'center', padding: '6px 0 0' }}>{block.caption}</div>}
-                        </>
-                      : <div style={{ background: '#1a1a1a', border: '1px dashed #a78bfa44', borderRadius: '6px', padding: '24px', textAlign: 'center', color: '#666', fontSize: '12px' }}>▶ Paste a YouTube or Vimeo URL to load thumbnail</div>
-                    }
+      case 'text':
+        return <div style={{ fontSize: '13px', color: '#ccc', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{block.text || <span style={{ color: '#444', fontStyle: 'italic' }}>Paragraph text…</span>}</div>;
+
+      case 'image':
+        return block.url
+          ? <img src={block.url} alt={block.alt} style={{ width: '100%', borderRadius: '6px', display: 'block', maxHeight: '160px', objectFit: 'cover' }} onError={e => (e.currentTarget.style.display = 'none')} />
+          : <div style={{ background: '#1a1a1a', border: '1px dashed #333', borderRadius: '6px', padding: '24px', textAlign: 'center', color: '#444', fontSize: '12px' }}>🖼 Image — click to add URL or upload</div>;
+
+      case 'video':
+        return (
+          <div style={{ position: 'relative', borderRadius: '6px', overflow: 'hidden' }}>
+            {block.thumbnailUrl
+              ? <>
+                  <img src={block.thumbnailUrl} alt="video" style={{ width: '100%', display: 'block', maxHeight: '140px', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 36, height: 36, background: 'rgba(0,0,0,0.75)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '14px', paddingLeft: '3px' }}>▶</div>
                   </div>
-                );
-
-              case 'button':
-                return (
-                  <div key={block.id} style={{ textAlign: 'center', marginBottom: '14px' }}>
-                    <span style={{ display: 'inline-block', background: '#c9a84c', color: '#0a0a0a', fontWeight: 800, fontSize: '13px', padding: '10px 24px', borderRadius: '8px' }}>
-                      {block.label || 'Button Label'}
-                    </span>
-                  </div>
-                );
-
-              case 'divider':
-                return <hr key={block.id} style={{ border: 'none', borderTop: '1px solid #2a2a2a', margin: '14px 0' }} />;
-
-              default: return null;
+                  {block.caption && <div style={{ background: '#111', fontSize: '11px', color: '#888', textAlign: 'center', padding: '6px' }}>{block.caption}</div>}
+                </>
+              : <div style={{ background: '#1a1a1a', border: '1px dashed #a78bfa44', borderRadius: '6px', padding: '24px', textAlign: 'center', color: '#666', fontSize: '12px' }}>▶ Paste a YouTube or Vimeo URL to load thumbnail</div>
             }
-          })}
-        </div>
-
-        {/* Footer CTA */}
-        {blocks.length > 0 && (
-          <div style={{ padding: '0 24px 20px', textAlign: 'center' }}>
-            <div style={{ display: 'inline-block', background: '#c9a84c', color: '#0a0a0a', fontWeight: 800, fontSize: '12px', padding: '9px 22px', borderRadius: '8px' }}>
-              Open The Winner&apos;s Circle →
-            </div>
           </div>
-        )}
+        );
 
-        {/* Footer */}
-        <div style={{ background: '#0d0d0d', borderTop: '1px solid #1a1a1a', padding: '12px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: '#555' }}>You&apos;re receiving this as a member of The Winner&apos;s Circle.</div>
-        </div>
+      case 'button':
+        return (
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ display: 'inline-block', background: '#c9a84c', color: '#0a0a0a', fontWeight: 800, fontSize: '13px', padding: '10px 24px', borderRadius: '8px' }}>
+              {block.label || 'Button Label'}
+            </span>
+          </div>
+        );
+
+      case 'divider':
+        return <hr style={{ border: 'none', borderTop: '1px solid #333', margin: '4px 0' }} />;
+
+      case 'spacer': {
+        const h = block.size === 'sm' ? 16 : block.size === 'lg' ? 48 : 32;
+        return (
+          <div style={{ height: `${h}px`, background: '#1a1a1a', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: '10px', color: '#444', fontWeight: 600 }}>SPACER ({block.size?.toUpperCase()})</span>
+          </div>
+        );
+      }
+
+      default: return null;
+    }
+  }
+
+  return (
+    <div
+      draggable
+      onClick={onClick}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      style={{
+        position: 'relative',
+        marginBottom: '4px',
+        borderRadius: '10px',
+        border: isSelected ? `2px solid #c9a84c` : isDragOver ? `2px dashed #c9a84c88` : '2px solid transparent',
+        cursor: 'pointer',
+        transition: 'border-color 0.12s',
+        background: isDragOver ? 'rgba(201,168,76,0.05)' : 'transparent',
+      }}
+    >
+      {/* Drag handle + type chip */}
+      <div style={{
+        position: 'absolute', top: '6px', left: '6px', zIndex: 2,
+        display: 'flex', alignItems: 'center', gap: '4px',
+        opacity: isSelected ? 1 : 0.4,
+        transition: 'opacity 0.15s',
+        pointerEvents: 'none',
+      }}>
+        <span style={{ color: '#666', fontSize: '14px', cursor: 'grab', userSelect: 'none' }}>⠿</span>
+        <span style={{ fontSize: '10px', fontWeight: 700, color: tc, background: `${tc}22`, padding: '1px 6px', borderRadius: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+          {block.type}
+        </span>
+      </div>
+
+      {/* Delete button */}
+      {isSelected && (
+        <button
+          onClick={e => { e.stopPropagation(); onDelete(); }}
+          style={{ position: 'absolute', top: '6px', right: '6px', zIndex: 2, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '5px', padding: '2px 7px', cursor: 'pointer', color: '#ef4444', fontSize: '11px', fontWeight: 700 }}>
+          ✕
+        </button>
+      )}
+
+      {/* Content preview */}
+      <div style={{ padding: '24px 14px 10px', borderLeft: `3px solid ${tc}`, borderRadius: '8px' }}>
+        {renderPreview()}
       </div>
     </div>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-export default function EmailComposer({ tierCounts }: { tierCounts: TierCounts }) {
-  const [tier, setTier] = useState('paid');
-  const [subject, setSubject] = useState('');
-  const [blocks, setBlocks] = useState<Block[]>([
-    { id: uid(), type: 'text', text: '' },
-  ]);
-  const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ success?: boolean; sent?: number; error?: string } | null>(null);
+// ─── Main EmailComposer ────────────────────────────────────────────────────────
+export default function EmailComposer({
+  tierCounts, initialBlocks, initialSubject, initialName,
+  initialTier, campaignId, onSaved, onTemplateSaved,
+}: Props) {
+  const [blocks, setBlocks] = useState<Block[]>(initialBlocks || []);
+  const [subject, setSubject] = useState(initialSubject || '');
+  const [campaignName, setCampaignName] = useState(initialName || '');
+  const [tier, setTier] = useState(initialTier || 'paid');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
+  // Action states
+  const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [result, setResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [templateNameInput, setTemplateNameInput] = useState('');
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [confirmSend, setConfirmSend] = useState(false);
+
+  const selectedBlock = blocks.find(b => b.id === selectedId) || null;
   const selectedCount = tierCounts[tier as keyof TierCounts] ?? 0;
 
+  // Auto-clear result after 5s
+  useEffect(() => {
+    if (result) { const t = setTimeout(() => setResult(null), 5000); return () => clearTimeout(t); }
+  }, [result]);
+
+  // ── Block operations ────────────────────────────────────────────────────────
   const updateBlock = useCallback((id: string, updated: Block) => {
     setBlocks(prev => prev.map(b => b.id === id ? updated : b));
   }, []);
 
   const deleteBlock = useCallback((id: string) => {
     setBlocks(prev => prev.filter(b => b.id !== id));
-  }, []);
-
-  const moveBlock = useCallback((id: string, dir: -1 | 1) => {
-    setBlocks(prev => {
-      const idx = prev.findIndex(b => b.id === id);
-      if (idx < 0) return prev;
-      const next = [...prev];
-      const swap = idx + dir;
-      if (swap < 0 || swap >= next.length) return prev;
-      [next[idx], next[swap]] = [next[swap], next[idx]];
-      return next;
-    });
+    setSelectedId(prev => prev === id ? null : prev);
   }, []);
 
   function addBlock(type: Block['type']) {
-    const id = uid();
-    const newBlock: Block = (() => {
-      switch (type) {
-        case 'heading':  return { id, type, text: '' };
-        case 'text':     return { id, type, text: '' };
-        case 'image':    return { id, type, url: '', alt: '', linkUrl: '' };
-        case 'video':    return { id, type, videoUrl: '', thumbnailUrl: '', caption: '', platform: '' };
-        case 'button':   return { id, type, label: '', href: '' };
-        case 'divider':  return { id, type };
-      }
-    })();
-    setBlocks(prev => [...prev, newBlock]);
+    const nb = makeBlock(type);
+    setBlocks(prev => [...prev, nb]);
+    setSelectedId(nb.id);
   }
 
-  async function handleSend() {
-    if (!subject.trim()) { setResult({ error: 'Subject line is required.' }); return; }
-    if (blocks.length === 0) { setResult({ error: 'Add at least one content block.' }); return; }
+  // ── Drag & drop ─────────────────────────────────────────────────────────────
+  function handleDrop(targetId: string) {
+    if (!dragId || dragId === targetId) return;
+    setBlocks(prev => {
+      const from = prev.findIndex(b => b.id === dragId);
+      const to   = prev.findIndex(b => b.id === targetId);
+      if (from < 0 || to < 0) return prev;
+      const next = [...prev];
+      const [removed] = next.splice(from, 1);
+      next.splice(to, 0, removed);
+      return next;
+    });
+    setDragId(null);
+    setDropTargetId(null);
+  }
 
+  // ── Save draft ──────────────────────────────────────────────────────────────
+  async function handleSaveDraft() {
+    if (!subject.trim()) { setResult({ type: 'error', message: 'Subject line is required.' }); return; }
+    setSaving(true);
+    try {
+      const body = { name: campaignName || subject, subject, blocks, tier, html_body: '', status: 'draft' };
+      let res: Response;
+      if (campaignId) {
+        res = await fetch(`/api/admin/campaigns/${campaignId}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      } else {
+        res = await fetch('/api/admin/campaigns', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      }
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Save failed'); }
+      setResult({ type: 'success', message: '✅ Draft saved!' });
+      onSaved?.();
+    } catch (e) { setResult({ type: 'error', message: String(e) }); }
+    setSaving(false);
+  }
+
+  // ── Save as template ────────────────────────────────────────────────────────
+  async function handleSaveTemplate() {
+    if (!templateNameInput.trim()) return;
+    if (blocks.length === 0) { setResult({ type: 'error', message: 'Add blocks before saving as template.' }); return; }
+    setSavingTemplate(true);
+    try {
+      const res = await fetch('/api/admin/templates', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: templateNameInput, description: subject || '', blocks }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Save failed'); }
+      setResult({ type: 'success', message: '✅ Template saved!' });
+      setShowTemplateModal(false);
+      setTemplateNameInput('');
+      onTemplateSaved?.();
+    } catch (e) { setResult({ type: 'error', message: String(e) }); }
+    setSavingTemplate(false);
+  }
+
+  // ── Send ────────────────────────────────────────────────────────────────────
+  async function handleSend() {
+    if (!subject.trim()) { setResult({ type: 'error', message: 'Subject line is required.' }); return; }
+    if (blocks.length === 0) { setResult({ type: 'error', message: 'Add at least one content block.' }); return; }
     setSending(true);
-    setResult(null);
+    setConfirmSend(false);
     try {
       const htmlBody = blocksToHtml(blocks);
       const res = await fetch('/api/admin/send-email', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ subject, htmlBody, tier }),
+        body: JSON.stringify({ subject, htmlBody, tier, blocks, campaignName: campaignName || subject, campaignId }),
       });
       const data = await res.json();
-      if (!res.ok) setResult({ error: data.error || 'Send failed' });
-      else setResult({ success: true, sent: data.sent });
-    } catch (e) { setResult({ error: String(e) }); }
+      if (!res.ok) throw new Error(data.error || 'Send failed');
+      setResult({ type: 'success', message: `✅ Sent to ${data.sent} member${data.sent !== 1 ? 's' : ''}!` });
+      onSaved?.();
+    } catch (e) { setResult({ type: 'error', message: String(e) }); }
     setSending(false);
   }
 
-  const labelStyle: React.CSSProperties = { display: 'block', fontSize: '11px', fontWeight: 700, color: '#666', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' };
+  // ── Styles ──────────────────────────────────────────────────────────────────
+  const panelCard: React.CSSProperties = {
+    background: 'var(--black-card)', border: '1px solid var(--border)',
+    borderRadius: '12px', padding: '16px',
+  };
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontSize: '11px', fontWeight: 700, color: '#666',
+    marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px',
+  };
+  const inputStyle: React.CSSProperties = {
+    width: '100%', background: '#161616', border: '1px solid #2a2a2a',
+    borderRadius: '8px', padding: '9px 12px', color: '#fff',
+    fontSize: '14px', outline: 'none', boxSizing: 'border-box',
+  };
 
   return (
-    <div style={{ padding: '28px 32px', maxWidth: '1200px' }}>
-      <h1 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '4px' }}>✉️ Email Marketing</h1>
-      <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '24px' }}>Visual email builder — send announcements and updates to your members.</p>
+    <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 280px', gap: '16px', alignItems: 'start' }}>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: '24px', alignItems: 'start' }}>
+      {/* ── LEFT PANEL ────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'sticky', top: '80px' }}>
 
-        {/* ── LEFT: Controls ─────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Campaign name */}
+        <div style={panelCard}>
+          <label style={labelStyle}>Campaign Name</label>
+          <input value={campaignName} onChange={e => setCampaignName(e.target.value)}
+            placeholder="e.g. May Newsletter"
+            style={inputStyle} />
+        </div>
 
-          {/* Recipients */}
-          <div style={{ background: 'var(--black-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '18px' }}>
-            <label style={labelStyle}>Recipients</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {TIER_OPTIONS.map(opt => (
-                <label key={opt.value} style={{
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '8px 12px', borderRadius: '8px', cursor: 'pointer',
-                  background: tier === opt.value ? 'rgba(201,168,76,0.08)' : 'transparent',
-                  border: `1px solid ${tier === opt.value ? 'rgba(201,168,76,0.35)' : 'var(--border)'}`,
-                }}>
-                  <input type="radio" name="tier" value={opt.value} checked={tier === opt.value} onChange={() => setTier(opt.value)} style={{ accentColor: '#c9a84c' }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: tier === opt.value ? opt.color : 'var(--text)' }}>{opt.label}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--muted)' }}>{opt.desc}</div>
-                  </div>
-                  <div style={{ fontSize: '12px', fontWeight: 700, color: tier === opt.value ? opt.color : 'var(--muted)', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '20px' }}>
-                    {tierCounts[opt.value as keyof TierCounts]}
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Subject */}
-          <div style={{ background: 'var(--black-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '18px' }}>
-            <label style={labelStyle}>Subject Line</label>
-            <input type="text" value={subject} onChange={e => setSubject(e.target.value)}
-              placeholder="e.g. 🏆 This Week in The Winner's Circle"
-              style={{ width: '100%', background: '#161616', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
-          </div>
-
-          {/* Block editor */}
-          <div style={{ background: 'var(--black-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '18px' }}>
-            <label style={labelStyle}>Email Content</label>
-
-            {blocks.length === 0 && (
-              <div style={{ padding: '24px', textAlign: 'center', color: '#444', fontSize: '13px', border: '1px dashed #2a2a2a', borderRadius: '8px', marginBottom: '12px' }}>
-                No blocks yet — add one below to start building
-              </div>
-            )}
-
-            {blocks.map((block, i) => (
-              <BlockCard
-                key={block.id}
-                block={block}
-                index={i}
-                total={blocks.length}
-                onChange={updated => updateBlock(block.id, updated)}
-                onDelete={() => deleteBlock(block.id)}
-                onMove={dir => moveBlock(block.id, dir)}
-              />
+        {/* Recipients */}
+        <div style={panelCard}>
+          <label style={labelStyle}>Recipients</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {TIER_OPTIONS.map(opt => (
+              <label key={opt.value} style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '7px 10px', borderRadius: '7px', cursor: 'pointer',
+                background: tier === opt.value ? 'rgba(201,168,76,0.08)' : 'transparent',
+                border: `1px solid ${tier === opt.value ? 'rgba(201,168,76,0.3)' : 'transparent'}`,
+              }}>
+                <input type="radio" name="tier" value={opt.value} checked={tier === opt.value} onChange={() => setTier(opt.value)} style={{ accentColor: '#c9a84c' }} />
+                <span style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: tier === opt.value ? opt.color : 'var(--text)' }}>{opt.label}</span>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: tier === opt.value ? opt.color : '#555', background: 'rgba(255,255,255,0.05)', padding: '1px 7px', borderRadius: '10px' }}>
+                  {tierCounts[opt.value as keyof TierCounts]}
+                </span>
+              </label>
             ))}
-
-            <AddBlockBar onAdd={addBlock} />
           </div>
+        </div>
 
-          {/* Result */}
-          {result && (
-            <div style={{
-              padding: '12px 16px', borderRadius: '8px',
-              background: result.success ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-              border: `1px solid ${result.success ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-              fontSize: '14px', color: result.success ? '#22c55e' : '#ef4444',
-            }}>
-              {result.success
-                ? `✅ Sent to ${result.sent} member${result.sent !== 1 ? 's' : ''}!`
-                : `⚠️ ${result.error}`}
-            </div>
-          )}
+        {/* Subject */}
+        <div style={panelCard}>
+          <label style={labelStyle}>Subject Line</label>
+          <input value={subject} onChange={e => setSubject(e.target.value)}
+            placeholder="🏆 This Week in The Winner's Circle"
+            style={inputStyle} />
+        </div>
 
-          {/* Send button */}
-          <button onClick={handleSend} disabled={sending || !subject.trim() || blocks.length === 0}
+        {/* Add blocks */}
+        <div style={panelCard}>
+          <label style={labelStyle}>Add Block</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {BLOCK_TYPES.map(bt => (
+              <button key={bt.type} onClick={() => addBlock(bt.type)} style={{
+                display: 'flex', alignItems: 'center', gap: '4px',
+                background: `${bt.color}15`, border: `1px solid ${bt.color}40`,
+                borderRadius: '16px', padding: '4px 10px', cursor: 'pointer',
+                color: bt.color, fontSize: '11px', fontWeight: 600,
+              }}>
+                <span style={{ fontSize: '10px' }}>{bt.icon}</span> {bt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button onClick={handleSaveDraft} disabled={saving}
+            style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '10px', cursor: 'pointer', color: '#ccc', fontSize: '13px', fontWeight: 700 }}>
+            {saving ? 'Saving…' : '💾 Save Draft'}
+          </button>
+          <button onClick={() => setShowTemplateModal(true)}
+            style={{ background: '#1a1a1a', border: '1px solid #60a5fa44', borderRadius: '8px', padding: '10px', cursor: 'pointer', color: '#60a5fa', fontSize: '13px', fontWeight: 700 }}>
+            📄 Save as Template
+          </button>
+          <button onClick={() => setConfirmSend(true)} disabled={sending || !subject.trim() || blocks.length === 0}
             style={{
               background: sending || !subject.trim() || blocks.length === 0 ? '#5a4a20' : '#c9a84c',
-              color: '#0a0a0a', border: 'none', borderRadius: '10px',
-              padding: '14px', fontSize: '15px', fontWeight: 800,
-              cursor: sending || !subject.trim() || blocks.length === 0 ? 'not-allowed' : 'pointer',
-              width: '100%',
+              color: '#0a0a0a', border: 'none', borderRadius: '8px',
+              padding: '12px', cursor: sending || !subject.trim() || blocks.length === 0 ? 'not-allowed' : 'pointer',
+              fontSize: '14px', fontWeight: 800,
             }}>
-            {sending ? `Sending to ${selectedCount} members…` : `✉️ Send to ${selectedCount} Member${selectedCount !== 1 ? 's' : ''}`}
+            {sending ? `Sending…` : `✉️ Send to ${selectedCount}`}
           </button>
         </div>
 
-        {/* ── RIGHT: Live Preview ─────────────────────────────────── */}
-        <div style={{ position: 'sticky', top: '80px' }}>
-          <div style={{ background: 'var(--black-card)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden' }}>
-            <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '12px', color: '#666', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Live Preview</span>
-              <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', marginLeft: 'auto' }} />
-              <span style={{ fontSize: '11px', color: '#22c55e' }}>Auto-updates</span>
+        {/* Result message */}
+        {result && (
+          <div style={{
+            padding: '10px 14px', borderRadius: '8px',
+            background: result.type === 'success' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+            border: `1px solid ${result.type === 'success' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+            fontSize: '13px', color: result.type === 'success' ? '#22c55e' : '#ef4444',
+          }}>
+            {result.message}
+          </div>
+        )}
+      </div>
+
+      {/* ── CENTER CANVAS ─────────────────────────────────────────── */}
+      <div>
+        {/* Email wrapper */}
+        <div style={{ background: '#0a0a0a', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)' }}>
+          {/* Email header */}
+          <div style={{ background: '#111', border: '1px solid #1e1e1e', borderTop: '4px solid #c9a84c', borderRadius: '12px 12px 0 0', padding: '20px 24px', textAlign: 'center', marginBottom: 0 }}>
+            <div style={{ fontSize: '26px', marginBottom: '4px' }}>🏆</div>
+            <div style={{ fontWeight: 800, color: '#c9a84c', fontSize: '15px' }}>The Winner&apos;s Circle</div>
+            <div style={{ fontSize: '10px', color: '#555', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '2px' }}>Private Mastermind Community</div>
+          </div>
+
+          {/* Subject preview */}
+          {subject && (
+            <div style={{ background: '#111', borderLeft: '1px solid #1e1e1e', borderRight: '1px solid #1e1e1e', padding: '16px 24px 4px' }}>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{subject}</h2>
             </div>
-            <div style={{ maxHeight: 'calc(100vh - 180px)', overflowY: 'auto', padding: '12px' }}>
-              <EmailPreview subject={subject} blocks={blocks} />
+          )}
+
+          {/* Blocks canvas */}
+          <div
+            style={{ background: '#111', borderLeft: '1px solid #1e1e1e', borderRight: '1px solid #1e1e1e', padding: '12px 24px', minHeight: '200px' }}
+            onClick={e => { if (e.target === e.currentTarget) setSelectedId(null); }}
+          >
+            {blocks.length === 0 && (
+              <div style={{ padding: '48px 0', textAlign: 'center', color: '#333', fontSize: '14px', border: '1px dashed #222', borderRadius: '8px' }}>
+                <div style={{ fontSize: '24px', marginBottom: '8px' }}>✉️</div>
+                Add blocks from the left panel to start building your email
+              </div>
+            )}
+
+            {blocks.map(block => (
+              <CanvasBlock
+                key={block.id}
+                block={block}
+                isSelected={selectedId === block.id}
+                isDragOver={dropTargetId === block.id}
+                onClick={() => setSelectedId(block.id)}
+                onDelete={() => deleteBlock(block.id)}
+                onDragStart={() => setDragId(block.id)}
+                onDragOver={e => { e.preventDefault(); setDropTargetId(block.id); }}
+                onDrop={e => { e.preventDefault(); handleDrop(block.id); }}
+                onDragEnd={() => { setDragId(null); setDropTargetId(null); }}
+              />
+            ))}
+          </div>
+
+          {/* Footer CTA preview */}
+          {blocks.length > 0 && (
+            <div style={{ background: '#111', borderLeft: '1px solid #1e1e1e', borderRight: '1px solid #1e1e1e', padding: '0 24px 20px', textAlign: 'center' }}>
+              <span style={{ display: 'inline-block', background: '#c9a84c', color: '#0a0a0a', fontWeight: 800, fontSize: '12px', padding: '8px 20px', borderRadius: '8px' }}>
+                Open The Winner&apos;s Circle →
+              </span>
             </div>
+          )}
+
+          {/* Email footer */}
+          <div style={{ background: '#0d0d0d', border: '1px solid #1e1e1e', borderTop: '1px solid #1a1a1a', borderRadius: '0 0 12px 12px', padding: '14px 24px', textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: '#444' }}>You&apos;re receiving this as a member of The Winner&apos;s Circle.</div>
           </div>
         </div>
 
+        {/* Canvas hint */}
+        <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '11px', color: '#444' }}>
+          Click a block to edit it · Drag to reorder
+        </div>
       </div>
+
+      {/* ── RIGHT PROPERTIES PANEL ────────────────────────────────── */}
+      <div style={{ position: 'sticky', top: '80px' }}>
+        <div style={{ background: 'var(--black-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', minHeight: '200px' }}>
+          {selectedBlock ? (
+            <>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '14px' }}>
+                Block Properties
+              </div>
+              <BlockProperties
+                block={selectedBlock}
+                onChange={updated => updateBlock(selectedBlock.id, updated)}
+              />
+            </>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '160px', gap: '10px', color: '#444', textAlign: 'center' }}>
+              <div style={{ fontSize: '28px' }}>👆</div>
+              <div style={{ fontSize: '13px', fontWeight: 500 }}>Click a block to edit</div>
+              <div style={{ fontSize: '11px', color: '#333' }}>Properties will appear here</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── TEMPLATE SAVE MODAL ──────────────────────────────────────── */}
+      {showTemplateModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => setShowTemplateModal(false)}>
+          <div style={{ background: '#161616', border: '1px solid #2a2a2a', borderRadius: '14px', padding: '28px', width: '380px', maxWidth: '90vw' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 800 }}>💾 Save Template</h3>
+            <p style={{ margin: '0 0 20px', fontSize: '13px', color: '#888' }}>Save your current blocks as a reusable template.</p>
+            <input
+              autoFocus
+              value={templateNameInput}
+              onChange={e => setTemplateNameInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSaveTemplate(); }}
+              placeholder="Template name (e.g. Monthly Newsletter)"
+              style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }}
+            />
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowTemplateModal(false)}
+                style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '9px 18px', cursor: 'pointer', color: '#888', fontSize: '13px', fontWeight: 600 }}>
+                Cancel
+              </button>
+              <button onClick={handleSaveTemplate} disabled={!templateNameInput.trim() || savingTemplate}
+                style={{ background: '#60a5fa', border: 'none', borderRadius: '8px', padding: '9px 18px', cursor: 'pointer', color: '#0a0a0a', fontSize: '13px', fontWeight: 800 }}>
+                {savingTemplate ? 'Saving…' : 'Save Template'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SEND CONFIRM MODAL ──────────────────────────────────────── */}
+      {confirmSend && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          onClick={() => setConfirmSend(false)}>
+          <div style={{ background: '#161616', border: '1px solid #2a2a2a', borderRadius: '14px', padding: '28px', width: '380px', maxWidth: '90vw' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 6px', fontSize: '18px', fontWeight: 800 }}>✉️ Send Campaign?</h3>
+            <p style={{ margin: '0 0 4px', fontSize: '13px', color: '#888' }}>
+              You&apos;re about to send <strong style={{ color: '#fff' }}>&quot;{subject}&quot;</strong> to:
+            </p>
+            <p style={{ margin: '0 0 20px', fontSize: '22px', fontWeight: 800, color: '#c9a84c' }}>
+              {selectedCount} member{selectedCount !== 1 ? 's' : ''}
+            </p>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setConfirmSend(false)}
+                style={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '9px 18px', cursor: 'pointer', color: '#888', fontSize: '13px', fontWeight: 600 }}>
+                Cancel
+              </button>
+              <button onClick={handleSend}
+                style={{ background: '#c9a84c', border: 'none', borderRadius: '8px', padding: '9px 22px', cursor: 'pointer', color: '#0a0a0a', fontSize: '13px', fontWeight: 800 }}>
+                Send Now →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
