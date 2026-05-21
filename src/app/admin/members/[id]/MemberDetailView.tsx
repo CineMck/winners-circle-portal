@@ -20,9 +20,11 @@ interface Profile {
   created_at: string;
 }
 
+interface ReferredUser { full_name: string; email: string; tier: string; avatar_url: string | null; }
 interface Referral {
   id: string; referred_email: string; status: string; created_at: string;
-  referred_user?: { full_name: string; email: string; tier: string; avatar_url: string | null } | null;
+  // Supabase returns joined rows as arrays
+  referred_user?: ReferredUser[] | null;
 }
 
 interface BillingData {
@@ -656,8 +658,8 @@ function ReferralsTab({ profile, referrals }: { profile: Profile; referrals: Ref
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const activated = referrals.filter(r => r.status === 'activated' || r.referred_user);
-  const pending   = referrals.filter(r => r.status === 'pending' && !r.referred_user);
+  const activated = referrals.filter(r => r.status === 'activated' || r.referred_user?.[0]);
+  const pending   = referrals.filter(r => r.status === 'pending' && !r.referred_user?.[0]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -704,26 +706,27 @@ function ReferralsTab({ profile, referrals }: { profile: Profile; referrals: Ref
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {referrals.map(ref => {
-              const isActivated = ref.status === 'activated' || !!ref.referred_user;
-              const tc = getTierColor((ref.referred_user?.tier as MemberTier) || 'free');
+              const ru = ref.referred_user?.[0] ?? null;
+              const isActivated = ref.status === 'activated' || !!ru;
+              const tc = getTierColor((ru?.tier as MemberTier) || 'free');
               return (
                 <div key={ref.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: '#0d0d0d', borderRadius: '8px', border: '1px solid #1e1e1e' }}>
-                  {ref.referred_user?.avatar_url ? (
-                    <img src={ref.referred_user.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  {ru?.avatar_url ? (
+                    <img src={ru.avatar_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                   ) : (
                     <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: '#555', flexShrink: 0 }}>
-                      {(ref.referred_user?.full_name || ref.referred_email)[0].toUpperCase()}
+                      {(ru?.full_name || ref.referred_email)[0].toUpperCase()}
                     </div>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {ref.referred_user?.full_name || ref.referred_email}
+                      {ru?.full_name || ref.referred_email}
                     </div>
                     <div style={{ fontSize: '11px', color: '#555' }}>{ref.referred_email} · {fmtDateStr(ref.created_at)}</div>
                   </div>
-                  {ref.referred_user?.tier && (
+                  {ru?.tier && (
                     <span style={{ fontSize: '11px', fontWeight: 700, color: tc, background: `${tc}18`, padding: '2px 8px', borderRadius: '8px', flexShrink: 0 }}>
-                      {ref.referred_user.tier}
+                      {ru.tier}
                     </span>
                   )}
                   <span style={{ fontSize: '11px', fontWeight: 700, flexShrink: 0, color: isActivated ? '#22c55e' : '#888', background: isActivated ? '#22c55e18' : '#1a1a1a', padding: '2px 8px', borderRadius: '8px' }}>
