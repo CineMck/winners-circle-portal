@@ -11,6 +11,7 @@ const ADMIN_NAV = [
   { href: '/admin/courses', label: 'Courses', icon: '🎓' },
   { href: '/admin/events', label: 'Events', icon: '📅' },
   { href: '/admin/resources', label: 'Resources', icon: '📚' },
+  { href: '/admin/progress', label: 'Progress', icon: '📈' },
   { href: '/admin/moderation', label: 'Moderation Log', icon: '🛡️' },
 ];
 
