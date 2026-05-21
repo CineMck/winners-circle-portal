@@ -191,7 +191,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // ── Call Grok for analysis ──
+    // ── Call Claude for analysis ──
     const systemPrompt = `You are an AI assistant helping John Wentworth manage the Winner's Circle mastermind community. John is a successful real estate entrepreneur who genuinely cares about his members' growth and progress.
 
 Your job is to:
@@ -235,13 +235,13 @@ Only include members where there's a genuine reason to reach out. Quality over q
 
     try {
       const rawResponse = await callClaude(systemPrompt, userPrompt);
-      // Extract JSON from response (Grok sometimes wraps it in markdown)
+      // Extract JSON from response (Claude sometimes wraps it in markdown code fences)
       const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysisJson = JSON.parse(jsonMatch[0]);
       }
     } catch (aiErr) {
-      console.error('Grok API error:', aiErr);
+      console.error('Claude API error:', aiErr);
     }
 
     // Build suggested outreach array

@@ -8,7 +8,6 @@ const supabaseAdmin = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
-// (unused in this route — we call Claude inline below with conversation history support)
 
 // POST /api/agent/command
 // Body: { reportId, instruction, commandLog }
