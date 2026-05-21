@@ -92,10 +92,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ use
         id: subscription.id,
         status: subscription.status,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        currentPeriodStart: subscription.current_period_start,
-        currentPeriodEnd: subscription.current_period_end,
-        trialEnd: subscription.trial_end,
-        cancelAt: subscription.cancel_at,
+        // Billing period dates moved to item level in API 2026-04-22.dahlia
+        currentPeriodStart: (subscription.items.data[0] as unknown as { current_period_start?: number })?.current_period_start ?? null,
+        currentPeriodEnd: (subscription.items.data[0] as unknown as { current_period_end?: number })?.current_period_end ?? null,
+        trialEnd: (subscription as unknown as { trial_end?: number | null })?.trial_end ?? null,
+        cancelAt: (subscription as unknown as { cancel_at?: number | null })?.cancel_at ?? null,
         items: subscription.items.data.map(i => ({
           priceId: i.price.id,
           amount: i.price.unit_amount,
@@ -116,7 +117,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ use
         hostedUrl: inv.hosted_invoice_url,
         pdfUrl: inv.invoice_pdf,
         description: inv.description || inv.lines?.data[0]?.description,
-        chargeId: inv.charge as string | null,
+        chargeId: (inv as unknown as { charge?: string | null }).charge ?? null,
       })),
       paymentMethod: paymentMethod ? {
         brand: (paymentMethod as Stripe.PaymentMethod).card?.brand,
