@@ -47,15 +47,18 @@ async function sendDMAs(senderId: string, conversationId: string, content: strin
 
 // ── Helper: call Claude API ──
 async function callClaude(systemPrompt: string, userPrompt: string): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY environment variable is not set in Railway.');
+
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'x-api-key': process.env.ANTHROPIC_API_KEY!,
+      'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 2048,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
@@ -63,7 +66,7 @@ async function callClaude(systemPrompt: string, userPrompt: string): Promise<str
   });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Claude API error ${res.status}: ${err}`);
+    throw new Error(`Claude API ${res.status}: ${err}`);
   }
   const json = await res.json();
   return json.content?.[0]?.text || '';
@@ -239,9 +242,14 @@ Only include members where there's a genuine reason to reach out. Quality over q
       const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysisJson = JSON.parse(jsonMatch[0]);
+      } else {
+        // Claude returned text but not valid JSON — use the raw text as summary
+        analysisJson = { summary: rawResponse.slice(0, 500), propsTo: [], encourage: [] };
       }
     } catch (aiErr) {
       console.error('Claude API error:', aiErr);
+      // Surface the actual error so it's visible in the dashboard
+      analysisJson.summary = `Claude API error: ${String(aiErr)}`;
     }
 
     // Build suggested outreach array
