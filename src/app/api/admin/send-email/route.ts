@@ -76,8 +76,7 @@ export async function POST(req: NextRequest) {
 }
 
 function buildEmailHtml({ subject, body, appUrl }: { subject: string; body: string; appUrl: string }) {
-  // Convert newlines to <br> for plain text bodies
-  const formattedBody = body.replace(/\n/g, '<br>');
+  // body is already HTML from the block editor — do not replace newlines
 
   return `<!DOCTYPE html>
 <html>
@@ -104,7 +103,7 @@ function buildEmailHtml({ subject, body, appUrl }: { subject: string; body: stri
         <tr>
           <td style="background:#111;border-left:1px solid #1e1e1e;border-right:1px solid #1e1e1e;padding:32px 36px;">
             <h2 style="margin:0 0 20px;font-size:22px;font-weight:800;color:#fff;line-height:1.3;">${subject}</h2>
-            <div style="font-size:15px;color:#ccc;line-height:1.7;">${formattedBody}</div>
+            <div style="font-size:15px;color:#ccc;line-height:1.7;">${body}</div>
           </td>
         </tr>
 
