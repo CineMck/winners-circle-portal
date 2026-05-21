@@ -16,6 +16,11 @@ export interface Profile {
   subscription_status: string | null;
   created_at: string;
   updated_at: string;
+  industry: string | null;
+  birthday: string | null;
+  phone: string | null;
+  goals_12_months: string | null;
+  goals_30_days: string | null;
   followers_count?: number;
   following_count?: number;
   is_following?: boolean;
