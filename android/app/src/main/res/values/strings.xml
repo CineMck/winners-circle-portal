@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Winner\'s Circle</string>
+    <string name="title_activity_main">Winner\'s Circle</string>
+    <string name="package_name">com.neuluma.winnerscircle</string>
+    <string name="custom_url_scheme">com.neuluma.winnerscircle</string>
+</resources>
