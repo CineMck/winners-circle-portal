@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getTierColor, getTierLabel, type MemberTier, type UserRole } from '@/types';
-import { createClient } from '@/lib/supabase/client';
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Profile {
@@ -96,7 +96,6 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
 
 // ─── Profile Tab ─────────────────────────────────────────────────────────────
 function ProfileTab({ profile, lastLogin, onUpdate }: { profile: Profile; lastLogin: string | null; onUpdate: (p: Partial<Profile>) => void }) {
-  const supabase = createClient();
   const [editing, setEditing] = useState(false);
   const [tier, setTier] = useState(profile.tier);
   const [role, setRole] = useState(profile.role);
@@ -105,12 +104,27 @@ function ProfileTab({ profile, lastLogin, onUpdate }: { profile: Profile; lastLo
 
   async function save() {
     setSaving(true);
-    await supabase.from('profiles').update({ tier, role }).eq('id', profile.id);
-    onUpdate({ tier, role });
-    setEditing(false);
+    try {
+      const res = await fetch('/api/admin/update-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: profile.id, tier, role }),
+      });
+      if (res.ok) {
+        onUpdate({ tier, role });
+        setEditing(false);
+        setResult('✅ Saved');
+        setTimeout(() => setResult(''), 3000);
+      } else {
+        const data = await res.json();
+        setResult('❌ ' + (data.error ?? 'Save failed'));
+        setTimeout(() => setResult(''), 4000);
+      }
+    } catch {
+      setResult('❌ Network error — try again');
+      setTimeout(() => setResult(''), 4000);
+    }
     setSaving(false);
-    setResult('✅ Saved');
-    setTimeout(() => setResult(''), 3000);
   }
 
   const tc = getTierColor(profile.tier);

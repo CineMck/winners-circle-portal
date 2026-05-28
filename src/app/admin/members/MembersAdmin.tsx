@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Profile, MemberTier, UserRole, getTierColor, getTierLabel } from '@/types';
-import { createClient } from '@/lib/supabase/client';
 
 export default function MembersAdmin({ initialMembers }: { initialMembers: Profile[] }) {
   const [members, setMembers] = useState<Profile[]>(initialMembers);
@@ -22,8 +21,6 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteResult, setInviteResult] = useState<{ success?: boolean; error?: string; manualLink?: string; warning?: string } | null>(null);
 
-  const supabase = createClient();
-
   const filtered = members.filter(m => {
     const matchesSearch = !search || m.full_name?.toLowerCase().includes(search.toLowerCase()) || m.email?.toLowerCase().includes(search.toLowerCase());
     const matchesTier = tierFilter === 'all' || m.tier === tierFilter;
@@ -38,9 +35,22 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
 
   async function saveEdit(memberId: string) {
     setSaving(true);
-    await supabase.from('profiles').update({ tier: editTier, role: editRole }).eq('id', memberId);
-    setMembers(prev => prev.map(m => m.id === memberId ? { ...m, tier: editTier, role: editRole } : m));
-    setEditingId(null);
+    try {
+      const res = await fetch('/api/admin/update-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: memberId, tier: editTier, role: editRole }),
+      });
+      if (res.ok) {
+        setMembers(prev => prev.map(m => m.id === memberId ? { ...m, tier: editTier, role: editRole } : m));
+        setEditingId(null);
+      } else {
+        const data = await res.json();
+        alert('Save failed: ' + (data.error ?? 'Unknown error'));
+      }
+    } catch {
+      alert('Network error — please try again.');
+    }
     setSaving(false);
   }
 
