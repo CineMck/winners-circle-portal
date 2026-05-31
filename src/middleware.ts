@@ -28,8 +28,8 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Public routes
-  const publicRoutes = ['/login', '/signup', '/auth/callback'];
-  if (publicRoutes.some(r => pathname.startsWith(r))) {
+  const publicRoutes = ['/login', '/signup', '/auth/callback', '/auth/setup'];
+  if (pathname === '/' || publicRoutes.some(r => pathname.startsWith(r))) {
     if (user) {
       return NextResponse.redirect(new URL('/home', request.url));
     }
