@@ -4,10 +4,15 @@ import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { TIER_CONFIGS, MemberTier } from '@/types';
 
-const TIERS: MemberTier[] = ['core', 'elite'];
+const TIERS: MemberTier[] = ['free', 'core', 'elite'];
 
 // Detailed feature descriptions shown on the signup tier cards
 const TIER_FEATURE_DETAILS: Record<string, { title: string; desc: string }[]> = {
+  free: [
+    { title: '1 Zoom Call Per Month', desc: 'Join a live group call every month to stay connected and growing.' },
+    { title: 'Free Resources Library', desc: 'Access curated tools, templates, and training materials.' },
+    { title: 'Community Access', desc: 'Connect with other members in the Winner\'s Circle community.' },
+  ],
   core: [
     { title: '4 Zoom Lessons Per Month', desc: 'Live coaching lessons to keep your mindset and strategy sharp.' },
     { title: '1 Special Guest Call', desc: 'Hear from top performers across industries.' },
