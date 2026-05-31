@@ -4,7 +4,24 @@ import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { TIER_CONFIGS, MemberTier } from '@/types';
 
-const TIERS: MemberTier[] = ['core', 'elite', 'founding'];
+const TIERS: MemberTier[] = ['core', 'elite'];
+
+// Detailed feature descriptions shown on the signup tier cards
+const TIER_FEATURE_DETAILS: Record<string, { title: string; desc: string }[]> = {
+  core: [
+    { title: '4 Zoom Lessons Per Month', desc: 'Live coaching lessons to keep your mindset and strategy sharp.' },
+    { title: '1 Special Guest Call', desc: 'Hear from top performers across industries.' },
+    { title: 'Unlimited Replay Access', desc: 'Watch on your schedule — never miss a breakthrough.' },
+    { title: 'Free Member-Only Events', desc: 'Get access to exclusive in-person experiences.' },
+    { title: 'Winners Circle Swag', desc: 'Represent the mindset that wins.' },
+  ],
+  elite: [
+    { title: 'Everything in Core', desc: 'Includes Zoom lessons, events, guest calls, swag, and replays.' },
+    { title: '2 Additional Live Group Calls / Month', desc: 'One Group Marketing Call and one Group Coaching Call — held the 2nd and 3rd Wednesdays of the month at Noon.' },
+    { title: 'Group Marketing Call (1x/month)', desc: 'Deep dive into branding, lead gen, copywriting, and offers.' },
+    { title: 'Group Coaching Call (1x/month)', desc: 'Live Q&A and hot seat coaching with John & elite peers.' },
+  ],
+};
 
 const INDUSTRIES = [
   'Real Estate', 'Finance & Investing', 'Entrepreneurship / Business',
@@ -168,38 +185,76 @@ export default function SignupPage() {
         {/* ── Step 1: Tier Selection ── */}
         {stage === 'tier' && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
               {TIERS.map(tier => {
                 const config = TIER_CONFIGS[tier];
                 const selected = selectedTier === tier;
+                const isBestValue = tier === 'elite';
+                const details = TIER_FEATURE_DETAILS[tier] || [];
                 return (
                   <div key={tier} onClick={() => setSelectedTier(tier)} style={{
-                    background: 'var(--black-card)',
-                    border: `2px solid ${selected ? config.color : 'var(--border)'}`,
-                    borderRadius: '16px', padding: '24px', cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    boxShadow: selected ? `0 0 20px ${config.color}33` : 'none',
+                    background: '#0f1520',
+                    border: `2px solid ${selected ? config.color : isBestValue ? config.color + '66' : '#1e2a3a'}`,
+                    borderRadius: '16px', padding: '28px', cursor: 'pointer',
+                    transition: 'all 0.15s', position: 'relative', overflow: 'hidden',
+                    boxShadow: selected ? `0 0 28px ${config.color}44` : 'none',
                   }}>
-                    <div style={{ color: config.color, fontSize: '28px', marginBottom: '8px' }}>
-                      {tier === 'core' ? '⚡' : tier === 'elite' ? '💎' : '👑'}
+                    {/* Best Value badge */}
+                    {isBestValue && (
+                      <div style={{
+                        position: 'absolute', top: 0, right: 0,
+                        background: '#f59e0b', color: '#000',
+                        fontSize: '11px', fontWeight: 800, padding: '5px 14px',
+                        borderBottomLeftRadius: '10px', letterSpacing: '0.5px',
+                      }}>BEST VALUE</div>
+                    )}
+
+                    <div style={{ color: config.color, fontSize: '26px', marginBottom: '10px' }}>
+                      {tier === 'core' ? '⚡' : '🚀'}
                     </div>
-                    <div style={{ fontWeight: 800, fontSize: '18px', marginBottom: '4px' }}>{config.label}</div>
-                    <div style={{ fontSize: '24px', fontWeight: 700, color: config.color, marginBottom: '16px' }}>
-                      ${config.price_monthly}<span style={{ fontSize: '14px', color: 'var(--muted)', fontWeight: 400 }}>/mo</span>
+                    <div style={{ fontWeight: 800, fontSize: '20px', color: config.color, marginBottom: '2px' }}>
+                      {config.label.toUpperCase()} MEMBERSHIP
                     </div>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {config.features.map(f => (
-                        <li key={f} style={{ fontSize: '13px', color: 'var(--muted)', display: 'flex', gap: '8px' }}>
-                          <span style={{ color: config.color }}>✓</span> {f}
-                        </li>
+                    {isBestValue && (
+                      <div style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>
+                        Small Group Coaching — Limited To 10 People
+                      </div>
+                    )}
+                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', margin: '12px 0 20px' }}>
+                      ${config.price_monthly}<span style={{ fontSize: '15px', color: '#888', fontWeight: 400 }}> / Month</span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {details.map(f => (
+                        <div key={f.title} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                          <div style={{
+                            width: '22px', height: '22px', borderRadius: '6px',
+                            background: '#1a4a2a', border: '2px solid #22c55e',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0, fontSize: '12px', marginTop: '1px',
+                          }}>✓</div>
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: config.color, marginBottom: '2px' }}>{f.title}</div>
+                            <div style={{ fontSize: '12px', color: '#888', lineHeight: 1.4 }}>{f.desc}</div>
+                          </div>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
+
+                    {/* Selection indicator */}
+                    {selected && (
+                      <div style={{
+                        marginTop: '20px', padding: '8px', borderRadius: '8px',
+                        background: config.color + '22', border: `1px solid ${config.color}`,
+                        textAlign: 'center', fontSize: '13px', fontWeight: 700, color: config.color,
+                      }}>✓ Selected</div>
+                    )}
                   </div>
                 );
               })}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
-              <button onClick={() => setStage('account')} className="btn-gold" style={{ padding: '13px 36px', fontSize: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '28px' }}>
+              <button onClick={() => setStage('account')} className="btn-gold" style={{ padding: '14px 42px', fontSize: '16px', fontWeight: 800 }}>
                 Continue with {TIER_CONFIGS[selectedTier].label} →
               </button>
             </div>

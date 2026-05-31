@@ -269,8 +269,8 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
                 <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '6px' }}>Membership Tier</label>
                 <select value={inviteTier} onChange={e => setInviteTier(e.target.value as MemberTier)} style={inputStyle}>
                   <option value="free">Free</option>
-                  <option value="core">Core Member ($97/mo)</option>
-                  <option value="elite">Elite Member ($197/mo)</option>
+                  <option value="core">Core Member ($150/mo)</option>
+                  <option value="elite">Elevate ($495/mo)</option>
                   <option value="founding">Founding Member ($497/mo)</option>
                 </select>
               </div>
