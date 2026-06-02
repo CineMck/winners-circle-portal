@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "497829319227",
+    "project_id": "winners-cirle",
+    "storage_bucket": "winners-cirle.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:497829319227:android:e0f13d4443dd09c91b421e",
+        "android_client_info": {
+          "package_name": "com.neuluma.winnerscircle"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdaWgMFFLeM3mmNU5tEcEkWp_MN_auqJo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

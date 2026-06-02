@@ -6,6 +6,7 @@ import { Profile, Channel, canAccessTier, getTierColor, getTierLabel, getInitial
 import { createClient } from '@/lib/supabase/client';
 import NotificationBell from './NotificationBell';
 import PushNotificationSetup from '@/components/PushNotificationSetup';
+import NativePushBootstrap from '@/components/NativePushBootstrap';
 
 interface Props {
   profile: Profile;
@@ -239,6 +240,7 @@ export default function PortalShell({ profile, channels, children }: Props) {
       </main>
 
       <PushNotificationSetup />
+      <NativePushBootstrap />
 
       <style>{`
         @media (max-width: 900px) {

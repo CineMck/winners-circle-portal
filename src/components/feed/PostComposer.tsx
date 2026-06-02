@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Profile, getTierColor, getInitials } from '@/types';
+import { isNative, pickOrCapturePhoto } from '@/lib/native';
 
 interface Props {
   currentUser: Profile;
@@ -49,6 +50,29 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
     });
     // Reset file input so same file can be re-selected
     if (fileRef.current) fileRef.current.value = '';
+  }
+
+  function addBlobToMedia(blob: Blob, fileName: string) {
+    if (blob.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setPostError(`File too large: ${fileName} (max ${MAX_FILE_SIZE_MB}MB)`);
+      return;
+    }
+    const file = blob instanceof File ? blob : new File([blob], fileName, { type: blob.type });
+    setMediaFiles(prev => [...prev, file]);
+    setMediaTypes(prev => [...prev, file.type]);
+    const url = URL.createObjectURL(file);
+    setMediaPreviews(prev => [...prev, url]);
+    setPostError(null);
+  }
+
+  /** Native: action sheet for camera vs library. Web: file picker. */
+  async function openMediaPicker() {
+    if (isNative()) {
+      const photo = await pickOrCapturePhoto({ source: 'prompt', maxSize: 2048 });
+      if (photo) addBlobToMedia(photo.blob, photo.fileName);
+    } else {
+      fileRef.current?.click();
+    }
   }
 
   function removeMedia(index: number) {
@@ -204,7 +228,7 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <button type="button" onClick={() => fileRef.current?.click()} style={{
+              <button type="button" onClick={openMediaPicker} style={{
                 background: 'none', border: '1px solid var(--border)', borderRadius: '8px',
                 padding: '6px 12px', color: 'var(--muted)', cursor: 'pointer', fontSize: '12px',
               }}>

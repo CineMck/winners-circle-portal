@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import { Profile, ChallengeParticipation, Post, getTierColor, getTierLabel } from '@/types';
 import { formatDate, getInitials } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { isNative, pickOrCapturePhoto } from '@/lib/native';
 import Link from 'next/link';
 
 interface Props {
@@ -25,14 +26,12 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
 
   const tierColor = getTierColor(profile?.tier || 'free');
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
+  async function uploadAvatarBlob(blob: Blob, fileName: string) {
+    if (!blob.type.startsWith('image/')) {
       setAvatarError('Please select an image file');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (blob.size > 5 * 1024 * 1024) {
       setAvatarError('Image must be under 5MB');
       return;
     }
@@ -42,7 +41,7 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
 
     try {
       const fd = new FormData();
-      fd.append('file', file);
+      fd.append('file', blob, fileName);
       fd.append('folder', 'avatars');
       fd.append('userId', profile.id);
 
@@ -66,6 +65,26 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
     if (avatarRef.current) avatarRef.current.value = '';
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadAvatarBlob(file, file.name);
+  }
+
+  /**
+   * Triggered by clicking the avatar or camera badge.
+   * On native: opens the iOS/Android action sheet (Take Photo / Choose Library).
+   * On web: opens the regular file picker.
+   */
+  async function openAvatarPicker() {
+    if (isNative()) {
+      const photo = await pickOrCapturePhoto({ source: 'prompt', maxSize: 1024 });
+      if (photo) await uploadAvatarBlob(photo.blob, photo.fileName);
+    } else {
+      avatarRef.current?.click();
+    }
+  }
+
   async function saveProfile() {
     setSaving(true);
     await supabase.from('profiles').update({ full_name: fullName, bio }).eq('id', profile.id);
@@ -83,7 +102,7 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
             {/* Avatar with upload on click */}
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <div
-                onClick={() => avatarRef.current?.click()}
+                onClick={openAvatarPicker}
                 style={{
                   width: 80, height: 80, borderRadius: '50%',
                   background: 'var(--gold-dim)', border: `3px solid ${tierColor}`,
@@ -110,7 +129,7 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
               </div>
               {/* Camera badge */}
               <div
-                onClick={() => avatarRef.current?.click()}
+                onClick={openAvatarPicker}
                 style={{
                   position: 'absolute', bottom: 0, right: 0,
                   width: 24, height: 24, borderRadius: '50%',

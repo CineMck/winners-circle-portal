@@ -20,14 +20,22 @@ SET referral_code = 'WC-' || UPPER(SUBSTRING(MD5(id::text || random()::text), 1,
 WHERE referral_code IS NULL;
 
 -- Allow admins to read all referrals
-CREATE POLICY IF NOT EXISTS "admins_view_all_referrals"
-  ON referrals FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE id = auth.uid() AND role IN ('admin', 'moderator')
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'referrals' AND policyname = 'admins_view_all_referrals'
+  ) THEN
+    CREATE POLICY "admins_view_all_referrals"
+      ON referrals FOR SELECT
+      USING (
+        EXISTS (
+          SELECT 1 FROM profiles
+          WHERE id = auth.uid() AND role IN ('admin', 'moderator')
+        )
+      );
+  END IF;
+END $$;
 
 -- Index for faster referral lookups
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);

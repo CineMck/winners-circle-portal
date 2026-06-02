@@ -1,69 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
-import webpush from 'web-push';
+import { sendPushToUsers } from '@/lib/push';
 
-// POST /api/push/send — send a push to one or all users
-// Body: { userIds?: string[], title, body, url }
+// POST /api/push/send — admin/moderator broadcast
+// Body: { userIds?: string[], title, body, url? }
+// If userIds is omitted, sends to every user with any registered device or web subscription.
 export async function POST(req: NextRequest) {
   try {
-    // Verify caller is admin or moderator
     const supabase = await createServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    const { data: profile } = await supabase
+      .from('profiles').select('role').eq('id', user.id).single();
     if (!profile || !['admin', 'moderator'].includes(profile.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Initialise VAPID inside the handler so it only runs at request time, not build time
-    webpush.setVapidDetails(
-      'mailto:' + (process.env.RESEND_FROM_EMAIL || 'hello@example.com'),
-      process.env.VAPID_PUBLIC_KEY!,
-      process.env.VAPID_PRIVATE_KEY!
-    );
-
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-
-    const { userIds, title, body, url = '/' } = await req.json();
-
-    // Get subscriptions
-    let query = supabaseAdmin.from('push_subscriptions').select('endpoint, p256dh, auth_key');
-    if (userIds && userIds.length > 0) query = query.in('user_id', userIds);
-
-    const { data: subs } = await query;
-    if (!subs || subs.length === 0) return NextResponse.json({ sent: 0 });
-
-    const payload = JSON.stringify({ title, body, url });
-    let sent = 0;
-    const stale: string[] = [];
-
-    await Promise.allSettled(
-      subs.map(async (sub) => {
-        try {
-          await webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth_key } },
-            payload
-          );
-          sent++;
-        } catch (err: unknown) {
-          const status = (err as { statusCode?: number }).statusCode;
-          if (status === 410 || status === 404) stale.push(sub.endpoint);
-        }
-      })
-    );
-
-    // Remove stale subscriptions
-    if (stale.length > 0) {
-      await supabaseAdmin.from('push_subscriptions').delete().in('endpoint', stale);
+    const { userIds, title, body, url } = await req.json();
+    if (!title || !body) {
+      return NextResponse.json({ error: 'title and body required' }, { status: 400 });
     }
 
-    return NextResponse.json({ sent });
+    // Resolve "all users" via the service-role key
+    let targets: string[] = userIds || [];
+    if (!userIds || userIds.length === 0) {
+      const admin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+      );
+      const { data: nativeUsers } = await admin
+        .from('device_push_tokens').select('user_id');
+      const { data: webUsers } = await admin
+        .from('push_subscriptions').select('user_id');
+      const set = new Set<string>();
+      nativeUsers?.forEach((r) => set.add(r.user_id));
+      webUsers?.forEach((r) => set.add(r.user_id));
+      targets = Array.from(set);
+    }
+
+    const result = await sendPushToUsers(targets, { title, body, url });
+    return NextResponse.json(result);
   } catch (err) {
     console.error('Push send error:', err);
     return NextResponse.json({ error: 'Failed' }, { status: 500 });

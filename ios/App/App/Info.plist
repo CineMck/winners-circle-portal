@@ -47,5 +47,19 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- @capacitor/camera permission strings (required by App Store review) -->
+	<key>NSCameraUsageDescription</key>
+	<string>Winner's Circle uses the camera so you can take a profile photo or add a photo to your posts.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Winner's Circle accesses your photo library so you can choose an image for your profile or posts.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Winner's Circle saves photos you capture in the app to your photo library.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Winner's Circle uses the microphone when you record video updates for the community.</string>
+	<!-- @capacitor/push-notifications: enable Push Notifications capability in Xcode (this just declares the background mode) -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
