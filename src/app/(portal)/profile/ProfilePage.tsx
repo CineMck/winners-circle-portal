@@ -4,6 +4,7 @@ import { Profile, ChallengeParticipation, Post, getTierColor, getTierLabel } fro
 import { formatDate, getInitials } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { isNative, pickOrCapturePhoto } from '@/lib/native';
+import { uploadToStorage } from '@/lib/upload';
 import Link from 'next/link';
 
 interface Props {
@@ -40,25 +41,18 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
     setAvatarError(null);
 
     try {
-      const fd = new FormData();
-      fd.append('file', blob, fileName);
-      fd.append('folder', 'avatars');
-      fd.append('userId', profile.id);
-
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
-      const json = await res.json();
-
-      if (!res.ok || json.error) {
-        setAvatarError(json.error || 'Upload failed');
-        setAvatarUploading(false);
-        return;
-      }
-
-      // Save to profile immediately
-      await supabase.from('profiles').update({ avatar_url: json.url }).eq('id', profile.id);
-      setAvatarUrl(json.url);
-    } catch {
-      setAvatarError('Upload failed — please try again');
+      // Direct Supabase Storage upload — works on web AND inside Capacitor WebView
+      const { url } = await uploadToStorage({
+        file: blob,
+        fileName,
+        folder: 'avatars',
+        userId: profile.id,
+      });
+      await supabase.from('profiles').update({ avatar_url: url }).eq('id', profile.id);
+      setAvatarUrl(url);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed — please try again';
+      setAvatarError(msg);
     }
     setAvatarUploading(false);
     // Reset file input

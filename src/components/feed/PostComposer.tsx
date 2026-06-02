@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Profile, getTierColor, getInitials } from '@/types';
 import { isNative, pickOrCapturePhoto } from '@/lib/native';
+import { uploadToStorage } from '@/lib/upload';
 
 interface Props {
   currentUser: Profile;
@@ -97,30 +98,24 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
 
     let mediaUrls: string[] = [];
 
-    // Upload each media file via server-side API route (bypasses storage RLS)
+    // Upload each media file DIRECTLY to Supabase Storage (no proxy)
+    // — works on web and inside the Capacitor iOS/Android WebView.
     for (let i = 0; i < mediaFiles.length; i++) {
       const file = mediaFiles[i];
       setUploadProgress(`Uploading file ${i + 1} of ${mediaFiles.length}…`);
 
       try {
-        const fd = new FormData();
-        fd.append('file', file);
-        fd.append('folder', 'posts');
-        fd.append('userId', currentUser.id);
-
-        const res = await fetch('/api/upload', { method: 'POST', body: fd });
-        const json = await res.json();
-
-        if (!res.ok || json.error) {
-          setPostError(`Upload failed: ${json.error || res.statusText}`);
-          setLoading(false);
-          setUploadProgress(null);
-          return;
-        }
-        mediaUrls.push(json.url);
+        const { url } = await uploadToStorage({
+          file,
+          fileName: file.name,
+          folder: 'posts',
+          userId: currentUser.id,
+        });
+        mediaUrls.push(url);
       } catch (err) {
         console.error('Upload exception:', err);
-        setPostError('Upload failed — please check your connection and try again.');
+        const msg = err instanceof Error ? err.message : 'Upload failed';
+        setPostError(`Upload failed: ${msg}`);
         setLoading(false);
         setUploadProgress(null);
         return;

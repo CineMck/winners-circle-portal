@@ -18,6 +18,8 @@ export default function NativePushBootstrap() {
 
   useEffect(() => {
     if (!isNative()) return;
+    // Tag body so safe-area CSS rules apply on iOS/Android only.
+    document.body.classList.add('has-safe-area');
     let cancelled = false;
 
     (async () => {

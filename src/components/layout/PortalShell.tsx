@@ -45,7 +45,7 @@ export default function PortalShell({ profile, channels, children }: Props) {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--black-bg)' }}>
       {/* TOPBAR */}
-      <header style={{
+      <header className="app-topbar" style={{
         position: 'fixed', top: 0, left: 0, right: 0, height: 'var(--topbar-h)',
         background: 'var(--black-card)', borderBottom: '1px solid var(--border)',
         display: 'flex', alignItems: 'center', padding: '0 20px',

@@ -56,13 +56,16 @@ export default function PostCard({ post, currentUser, onPin, onRemove }: Props) 
 
   async function handleRemove() {
     const reason = prompt('Reason for removal (optional):') ?? 'Removed by moderator';
-    await supabase.from('posts').update({
-      is_removed: true, removed_reason: reason, removed_by: currentUser.id
-    }).eq('id', post.id);
-    await supabase.from('moderation_log').insert({
-      moderator_id: currentUser.id, action: 'remove_post',
-      target_type: 'post', target_id: post.id, reason,
+    const res = await fetch('/api/admin/remove-post', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postId: post.id, reason }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert('Could not remove post: ' + (data.error ?? res.statusText));
+      return;
+    }
     onRemove?.(post.id);
     setShowModerationMenu(false);
   }

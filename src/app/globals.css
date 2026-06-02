@@ -32,6 +32,36 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* iOS Capacitor safe-area handling — push content below the notch/status bar
+   and above the home indicator. The .has-safe-area class is added to <body>
+   by NativePushBootstrap when running inside the native shell. */
+body.has-safe-area .app-topbar {
+  padding-top: env(safe-area-inset-top, 0px) !important;
+  height: calc(var(--topbar-h) + env(safe-area-inset-top, 0px)) !important;
+}
+body.has-safe-area .channel-sub-nav,
+body.has-safe-area .sidebar,
+body.has-safe-area .main-content {
+  top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px)) !important;
+}
+body.has-safe-area .main-content {
+  padding-top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px)) !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+}
+body.has-safe-area .mobile-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  height: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom, 0px)) !important;
+}
+@media (max-width: 900px) {
+  body.has-safe-area .main-content {
+    padding-top: calc(var(--topbar-h) + var(--mobile-nav-h) + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+  }
+  body.has-safe-area .main-content-community {
+    padding-top: calc(var(--topbar-h) + var(--mobile-nav-h) + env(safe-area-inset-top, 0px) + 40px) !important;
+  }
+}
+
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
