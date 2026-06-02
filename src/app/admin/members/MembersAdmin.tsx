@@ -13,6 +13,12 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
   const [saving, setSaving] = useState(false);
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
 
+  // Password reset state
+  const [pwResetId, setPwResetId] = useState<string | null>(null);
+  const [pwValue, setPwValue] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMessage, setPwMessage] = useState<{ userId: string; text: string; ok: boolean } | null>(null);
+
   // Invite modal state
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -52,6 +58,46 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
       alert('Network error — please try again.');
     }
     setSaving(false);
+  }
+
+  function startPasswordReset(memberId: string) {
+    setPwResetId(memberId);
+    setPwValue('');
+    setPwMessage(null);
+  }
+
+  function generateRandomPassword() {
+    // 16 chars, alphanumeric + symbols, safe to copy/paste
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    let pw = '';
+    for (let i = 0; i < 16; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+    setPwValue(pw);
+  }
+
+  async function submitPasswordReset(memberId: string) {
+    if (pwValue.length < 8) {
+      setPwMessage({ userId: memberId, ok: false, text: 'Min 8 characters' });
+      return;
+    }
+    setPwSaving(true);
+    setPwMessage(null);
+    try {
+      const res = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: memberId, newPassword: pwValue }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPwMessage({ userId: memberId, ok: true, text: 'Password updated — share with member securely' });
+        setPwResetId(null);
+      } else {
+        setPwMessage({ userId: memberId, ok: false, text: data.error || 'Reset failed' });
+      }
+    } catch {
+      setPwMessage({ userId: memberId, ok: false, text: 'Network error' });
+    }
+    setPwSaving(false);
   }
 
   async function removeMember(memberId: string) {
@@ -207,6 +253,10 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
                             style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', color: 'var(--text)' }}>
                             Edit
                           </button>
+                          <button onClick={() => startPasswordReset(member.id)}
+                            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', fontSize: '12px', color: 'var(--text)' }}>
+                            Password
+                          </button>
                           {confirmRemoveId === member.id ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <span style={{ fontSize: '11px', color: '#ef4444', whiteSpace: 'nowrap' }}>Sure?</span>
@@ -228,6 +278,42 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
                         </>
                       )}
                     </div>
+                    {(pwResetId === member.id || pwMessage?.userId === member.id) && (
+                      <div style={{ marginTop: 8, padding: '10px 12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 8 }}>
+                        {pwResetId === member.id && (
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <input
+                              type="text"
+                              value={pwValue}
+                              onChange={e => setPwValue(e.target.value)}
+                              placeholder="New password (min 8 chars)"
+                              autoComplete="new-password"
+                              style={{ background: '#161616', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 10px', color: 'var(--text)', fontSize: 12, fontFamily: 'monospace', minWidth: 240 }}
+                            />
+                            <button type="button" onClick={generateRandomPassword}
+                              style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, color: 'var(--muted)' }}>
+                              Generate
+                            </button>
+                            <button onClick={() => submitPasswordReset(member.id)} disabled={pwSaving || pwValue.length < 8}
+                              style={{ background: 'var(--gold)', color: '#0a0a0a', border: 'none', borderRadius: 6, padding: '5px 12px', cursor: pwSaving ? 'wait' : 'pointer', fontSize: 12, fontWeight: 700, opacity: pwValue.length < 8 ? 0.5 : 1 }}>
+                              {pwSaving ? 'Saving…' : 'Set Password'}
+                            </button>
+                            <button onClick={() => { setPwResetId(null); setPwValue(''); }}
+                              style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12, color: 'var(--muted)' }}>
+                              Cancel
+                            </button>
+                            <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 4 }}>
+                              Member is not notified — share the password securely.
+                            </span>
+                          </div>
+                        )}
+                        {pwMessage?.userId === member.id && (
+                          <div style={{ marginTop: pwResetId === member.id ? 6 : 0, fontSize: 12, color: pwMessage.ok ? '#22c55e' : '#ef4444' }}>
+                            {pwMessage.ok ? '✓ ' : '⚠️ '}{pwMessage.text}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
