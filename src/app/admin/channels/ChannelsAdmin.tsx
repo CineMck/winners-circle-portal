@@ -1,12 +1,15 @@
 'use client';
 import { useState } from 'react';
-import { Channel, MemberTier } from '@/types';
+import { Channel, MemberTier, AccessGroup, ACCESS_GROUP_LABELS } from '@/types';
 import { createClient } from '@/lib/supabase/client';
+import AccessGroupSelect from '@/components/admin/AccessGroupSelect';
 
-export default function ChannelsAdmin({ channels: initial, adminId }: { channels: Channel[]; adminId: string }) {
-  const [channels, setChannels] = useState<Channel[]>(initial);
+type ChannelWithAccess = Channel & { access_group?: AccessGroup };
+
+export default function ChannelsAdmin({ channels: initial, adminId }: { channels: ChannelWithAccess[]; adminId: string }) {
+  const [channels, setChannels] = useState<ChannelWithAccess[]>(initial);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', icon: 'hash', tier_required: 'free' as MemberTier, sort_order: 10 });
+  const [form, setForm] = useState({ name: '', description: '', icon: 'hash', tier_required: 'free' as MemberTier, access_group: 'all' as AccessGroup, sort_order: 10 });
   const [saving, setSaving] = useState(false);
   const supabase = createClient();
 
@@ -18,7 +21,7 @@ export default function ChannelsAdmin({ channels: initial, adminId }: { channels
     if (data) setChannels(prev => [...prev, data as Channel]);
     setSaving(false);
     setShowForm(false);
-    setForm({ name: '', description: '', icon: 'hash', tier_required: 'free', sort_order: 10 });
+    setForm({ name: '', description: '', icon: 'hash', tier_required: 'free', access_group: 'all', sort_order: 10 });
   }
 
   async function archiveChannel(channelId: string) {
@@ -48,13 +51,11 @@ export default function ChannelsAdmin({ channels: initial, adminId }: { channels
               <input style={inputStyle} value={form.name} onChange={e => setForm({...form, name: e.target.value})} required placeholder="wins" />
             </div>
             <div>
-              <label style={labelStyle}>Tier Required</label>
-              <select style={inputStyle} value={form.tier_required} onChange={e => setForm({...form, tier_required: e.target.value as MemberTier})}>
-                <option value="free">Free</option>
-                <option value="core">Core+</option>
-                <option value="elite">Elite+</option>
-                <option value="founding">Founding Only</option>
-              </select>
+              <AccessGroupSelect
+                value={form.access_group}
+                onChange={v => setForm({ ...form, access_group: v })}
+                label="Who can access this channel?"
+              />
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={labelStyle}>Description</label>
@@ -92,7 +93,7 @@ export default function ChannelsAdmin({ channels: initial, adminId }: { channels
               <div>
                 <div style={{ fontWeight: 700, fontSize: '15px' }}>{icon} {channel.name}</div>
                 <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>
-                  #{channel.slug} · {channel.tier_required} · Sort: {channel.sort_order}
+                  #{channel.slug} · {ACCESS_GROUP_LABELS[(channel.access_group || 'all') as AccessGroup]} · Sort: {channel.sort_order}
                 </div>
                 {channel.description && <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>{channel.description}</div>}
               </div>

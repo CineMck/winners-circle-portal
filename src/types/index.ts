@@ -230,5 +230,50 @@ export function canAccessTier(userTier: MemberTier, requiredTier: MemberTier): b
   return TIER_ORDER.indexOf(userTier) >= TIER_ORDER.indexOf(requiredTier);
 }
 
+/**
+ * Access groups — used to silo content (channels, challenges, courses, events,
+ * resources) by paying status rather than strict tier hierarchy.
+ *
+ *   all         — Everyone, including Free
+ *   paid        — Any paying member (Core, Elevate, 1-1 Elite)
+ *   elevate     — Elevate + 1-1 Elite only
+ *   one_on_one  — 1-1 Elite only
+ */
+export type AccessGroup = 'all' | 'paid' | 'elevate' | 'one_on_one';
+
+export const ACCESS_GROUP_LABELS: Record<AccessGroup, string> = {
+  all: 'Free + All Tiers',
+  paid: 'All Paid Tiers',
+  elevate: 'Elevate + 1-1 Elite',
+  one_on_one: '1-1 Elite Only',
+};
+
+export const ACCESS_GROUP_OPTIONS: { value: AccessGroup; label: string; hint: string }[] = [
+  { value: 'all', label: 'Free + All Tiers', hint: 'Anyone can access — including Free members' },
+  { value: 'paid', label: 'All Paid Tiers', hint: 'Core, Elevate, and 1-1 Elite' },
+  { value: 'elevate', label: 'Elevate + 1-1 Elite', hint: 'Elevate and 1-1 Elite only' },
+  { value: 'one_on_one', label: '1-1 Elite Only', hint: 'Reserved for 1-1 Elite members' },
+];
+
+export function canAccessGroup(userTier: MemberTier, group: AccessGroup): boolean {
+  switch (group) {
+    case 'all':        return true;
+    case 'paid':       return userTier !== 'free';
+    case 'elevate':    return userTier === 'elite' || userTier === 'founding';
+    case 'one_on_one': return userTier === 'founding';
+    default:           return false;
+  }
+}
+
+/** Map legacy tier_required → access_group. Used in the migration backfill. */
+export function tierRequiredToAccessGroup(tier: MemberTier): AccessGroup {
+  switch (tier) {
+    case 'free':     return 'all';
+    case 'core':     return 'paid';
+    case 'elite':    return 'elevate';
+    case 'founding': return 'one_on_one';
+  }
+}
+
 // Re-export utility helpers so files can import from either @/types or @/lib/utils
 export { getTierColor, getTierLabel, getInitials, formatDate, formatCurrency, cn } from '@/lib/utils';

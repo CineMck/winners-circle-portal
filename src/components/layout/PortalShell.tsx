@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Profile, Channel, canAccessTier, getTierColor, getTierLabel, getInitials } from '@/types';
+import { Profile, Channel, canAccessTier, canAccessGroup, AccessGroup, getTierColor, getTierLabel, getInitials } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 import NotificationBell from './NotificationBell';
 import PushNotificationSetup from '@/components/PushNotificationSetup';
@@ -124,7 +124,11 @@ export default function PortalShell({ profile, channels, children }: Props) {
           scrollbarWidth: 'none',
         }} className="channel-sub-nav">
           {channels.map(channel => {
-            const hasAccess = canAccessTier(profile?.tier || 'free', channel.tier_required);
+            // Prefer new access_group; fall back to legacy tier_required for older rows.
+            const accessGroup = (channel as Channel & { access_group?: AccessGroup }).access_group;
+            const hasAccess = accessGroup
+              ? canAccessGroup(profile?.tier || 'free', accessGroup)
+              : canAccessTier(profile?.tier || 'free', channel.tier_required);
             const active = pathname === `/community/${channel.slug}`;
             return (
               <Link
