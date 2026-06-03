@@ -2,7 +2,6 @@
 import { useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Profile, getTierColor, getInitials } from '@/types';
-import { isNative, pickOrCapturePhoto } from '@/lib/native';
 import { uploadToStorage } from '@/lib/upload';
 
 interface Props {
@@ -53,27 +52,14 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
     if (fileRef.current) fileRef.current.value = '';
   }
 
-  function addBlobToMedia(blob: Blob, fileName: string) {
-    if (blob.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      setPostError(`File too large: ${fileName} (max ${MAX_FILE_SIZE_MB}MB)`);
-      return;
-    }
-    const file = blob instanceof File ? blob : new File([blob], fileName, { type: blob.type });
-    setMediaFiles(prev => [...prev, file]);
-    setMediaTypes(prev => [...prev, file.type]);
-    const url = URL.createObjectURL(file);
-    setMediaPreviews(prev => [...prev, url]);
-    setPostError(null);
-  }
-
-  /** Native: action sheet for camera vs library. Web: file picker. */
-  async function openMediaPicker() {
-    if (isNative()) {
-      const photo = await pickOrCapturePhoto({ source: 'prompt', maxSize: 2048 });
-      if (photo) addBlobToMedia(photo.blob, photo.fileName);
-    } else {
-      fileRef.current?.click();
-    }
+  /**
+   * Opens the standard file picker on both web AND native.
+   * On iOS the system picker shows Photo Library / Take Photo or Video / Choose File,
+   * which lets the user pick or capture either a photo OR a video.
+   * (The @capacitor/camera plugin is photo-only, so we don't use it here.)
+   */
+  function openMediaPicker() {
+    fileRef.current?.click();
   }
 
   function removeMedia(index: number) {
