@@ -12,12 +12,34 @@ interface Referral {
   referred_user?: { full_name: string; tier: string };
 }
 
-export default function ReferralsPage({ profile, referrals }: { profile: Profile; referrals: Referral[] }) {
+export default function ReferralsPage({ profile, referrals: initialReferrals }: { profile: Profile; referrals: Referral[] }) {
+  const [referrals, setReferrals] = useState<Referral[]>(initialReferrals);
   const [email, setEmail] = useState('');
   const [personalNote, setPersonalNote] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  async function deleteReferral(id: string) {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/referrals/delete?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert('Could not delete: ' + (data.error ?? res.statusText));
+      } else {
+        setReferrals(prev => prev.filter(r => r.id !== id));
+      }
+    } catch {
+      alert('Network error — please try again.');
+    }
+    setDeletingId(null);
+    setConfirmDeleteId(null);
+  }
 
   const referralLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/signup?ref=${profile?.username}`;
 
@@ -135,24 +157,62 @@ export default function ReferralsPage({ profile, referrals }: { profile: Profile
         </div>
       ) : (
         <div>
-          {referrals.map(r => (
-            <div key={r.id} className="card" style={{ padding: '14px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: '14px' }}>
-                  {r.referred_user?.full_name || r.referred_email}
+          {referrals.map(r => {
+            const isPending = r.status === 'pending' && !r.referred_user;
+            const isConfirming = confirmDeleteId === r.id;
+            return (
+              <div key={r.id} className="card" style={{ padding: '14px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {r.referred_user?.full_name || r.referred_email}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{formatDate(r.created_at)}</div>
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{formatDate(r.created_at)}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <span style={{
+                    fontSize: '12px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px',
+                    background: r.status === 'converted' ? 'rgba(34,197,94,0.1)' : 'rgba(201,168,76,0.1)',
+                    color: r.status === 'converted' ? '#22c55e' : 'var(--gold)',
+                    border: `1px solid ${r.status === 'converted' ? '#22c55e' : 'var(--gold)'}`,
+                  }}>
+                    {r.status === 'converted' ? '✅ Joined' : '⏳ Pending'}
+                  </span>
+                  {isPending && (
+                    isConfirming ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 11, color: '#ef4444', whiteSpace: 'nowrap' }}>Sure?</span>
+                        <button
+                          onClick={() => deleteReferral(r.id)}
+                          disabled={deletingId === r.id}
+                          style={{ background: '#ef4444', border: 'none', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', fontSize: 11, color: '#fff', fontWeight: 700 }}
+                        >
+                          {deletingId === r.id ? '…' : 'Yes'}
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 11, color: 'var(--muted)' }}
+                        >
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDeleteId(r.id)}
+                        title="Delete invite"
+                        style={{
+                          background: 'none', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6,
+                          padding: '4px 10px', cursor: 'pointer', fontSize: 12, color: '#ef4444',
+                          lineHeight: 1,
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
-              <span style={{
-                fontSize: '12px', fontWeight: 700, padding: '3px 10px', borderRadius: '20px',
-                background: r.status === 'converted' ? 'rgba(34,197,94,0.1)' : 'rgba(201,168,76,0.1)',
-                color: r.status === 'converted' ? '#22c55e' : 'var(--gold)',
-                border: `1px solid ${r.status === 'converted' ? '#22c55e' : 'var(--gold)'}`,
-              }}>
-                {r.status === 'converted' ? '✅ Joined' : '⏳ Pending'}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
