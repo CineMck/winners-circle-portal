@@ -207,13 +207,20 @@ export const TIER_CONFIGS: Record<MemberTier, TierConfig> = {
   },
   founding: {
     name: 'founding',
-    label: 'Founding Member',
+    label: '1-1 Elite Member',
     price_monthly: 497,
     price_annual: 4970,
     stripe_price_id_monthly: process.env.NEXT_PUBLIC_STRIPE_FOUNDING_MONTHLY_PRICE_ID || '',
     stripe_price_id_annual: process.env.NEXT_PUBLIC_STRIPE_FOUNDING_ANNUAL_PRICE_ID || '',
     color: '#ffd700',
-    features: ['Everything in Elevate', 'Direct access to founders', 'Annual in-person event', 'Founding member badge forever'],
+    features: [
+      'Everything in Elevate',
+      'Private 1-on-1 coaching sessions',
+      'Direct text/call access to mentors',
+      'Custom growth roadmap',
+      'Annual in-person event',
+      'Elite member badge forever',
+    ],
   },
 };
 
