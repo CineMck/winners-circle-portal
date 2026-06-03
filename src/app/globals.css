@@ -37,6 +37,15 @@ html, body {
 
 /* Mobile-only safety net: keep all content inside the viewport.
    Common culprits: long words/URLs, fixed-width tables, large images, wide pre tags. */
+@media (max-width: 600px) {
+  /* Collapse auto-fill / auto-fit grids to a single column on phones so cards
+     never force horizontal overflow. Targets inline-styled grids across the app. */
+  .main-content div[style*="repeat(auto-fill"],
+  .main-content div[style*="repeat(auto-fit"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 @media (max-width: 900px) {
   .main-content,
   .main-content-community {
