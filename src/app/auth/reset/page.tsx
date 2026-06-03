@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 
 /**
  * Page users land on after clicking the password-reset link in their email.
@@ -51,12 +52,7 @@ export default function ResetPasswordPage() {
     }}>
       <div style={{ width: '100%', maxWidth: '400px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: '50%',
-            background: 'var(--gold-dim)', border: '2px solid var(--gold)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px', fontSize: '28px',
-          }}>🔑</div>
+          <Logo size={72} ring style={{ margin: '0 auto 16px' }} />
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text)', marginBottom: '6px' }}>
             Set a new password
           </h1>

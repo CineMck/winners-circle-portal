@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { TIER_CONFIGS, MemberTier } from '@/types';
+import Logo from '@/components/Logo';
 
 const TIERS: MemberTier[] = ['free', 'core', 'elite'];
 
@@ -145,12 +146,7 @@ export default function SignupPage() {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: '50%',
-            background: 'var(--gold-dim)', border: '2px solid var(--gold)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 16px', fontSize: '28px',
-          }}>🏆</div>
+          <Logo size={72} ring style={{ margin: '0 auto 16px' }} />
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text)', marginBottom: '6px' }}>
             Join the Winner&apos;s Circle
           </h1>

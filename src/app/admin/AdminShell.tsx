@@ -2,6 +2,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Profile, getTierColor } from '@/types';
+import Logo from '@/components/Logo';
 
 const ADMIN_NAV = [
   { href: '/admin', label: 'Dashboard', icon: '📊', exact: true },
@@ -31,7 +32,7 @@ export default function AdminShell({ profile, children }: { profile: Profile; ch
       }}>
         <div style={{ padding: '20px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ fontSize: '18px' }}>🏆</span>
+            <Logo size={22} />
             <span style={{ fontWeight: 800, color: 'var(--gold)', fontSize: '14px' }}>Winner&apos;s Circle</span>
           </div>
           <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import NotificationBell from './NotificationBell';
 import PushNotificationSetup from '@/components/PushNotificationSetup';
 import NativePushBootstrap from '@/components/NativePushBootstrap';
+import Logo from '@/components/Logo';
 
 interface Props {
   profile: Profile;
@@ -51,8 +52,8 @@ export default function PortalShell({ profile, channels, children }: Props) {
         display: 'flex', alignItems: 'center', padding: '0 20px',
         justifyContent: 'space-between', zIndex: 100,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '22px' }}>🏆</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Logo size={32} />
           <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--gold)' }}>Winner&apos;s Circle</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

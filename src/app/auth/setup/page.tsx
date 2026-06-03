@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import Logo from '@/components/Logo';
 
 const INDUSTRIES = [
   'Real Estate',
@@ -133,7 +134,7 @@ export default function SetupPage() {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ fontSize: '40px', marginBottom: '10px' }}>🏆</div>
+          <Logo size={64} style={{ display: 'block', margin: '0 auto 10px' }} />
           <h1 style={{ margin: 0, fontSize: '26px', fontWeight: 800, color: '#c9a84c', letterSpacing: '-0.5px' }}>
             The Winner&apos;s Circle
           </h1>

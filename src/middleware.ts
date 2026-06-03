@@ -28,9 +28,23 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Public routes
-  const publicRoutes = ['/login', '/signup', '/auth/callback', '/auth/setup'];
+  const publicRoutes = [
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/auth/callback',
+    '/auth/setup',
+    '/auth/reset',
+    '/privacy',
+    '/terms',
+  ];
+  // Routes a signed-in user is still allowed to hit (don't bounce them to /home).
+  const allowLoggedIn = ['/auth/reset', '/privacy', '/terms'];
   if (pathname === '/' || publicRoutes.some(r => pathname.startsWith(r))) {
-    if (user) {
+    if (user && !allowLoggedIn.some(r => pathname.startsWith(r)) && pathname !== '/') {
+      return NextResponse.redirect(new URL('/home', request.url));
+    }
+    if (user && pathname === '/') {
       return NextResponse.redirect(new URL('/home', request.url));
     }
     return supabaseResponse;
