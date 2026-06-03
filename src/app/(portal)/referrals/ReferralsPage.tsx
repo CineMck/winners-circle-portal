@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Profile } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
 
 interface Referral {
   id: string;
@@ -15,10 +14,10 @@ interface Referral {
 
 export default function ReferralsPage({ profile, referrals }: { profile: Profile; referrals: Referral[] }) {
   const [email, setEmail] = useState('');
+  const [personalNote, setPersonalNote] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
-  const supabase = createClient();
 
   const referralLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/signup?ref=${profile?.username}`;
 
@@ -27,10 +26,25 @@ export default function ReferralsPage({ profile, referrals }: { profile: Profile
     if (!email.trim()) return;
     setSending(true);
     setError('');
-    const { error } = await supabase.from('referrals').insert({ referrer_id: profile.id, referred_email: email });
+    try {
+      const res = await fetch('/api/referrals/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), personalNote: personalNote.trim() || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || 'Could not send invite');
+      } else {
+        setSent(true);
+        setEmail('');
+        setPersonalNote('');
+        setTimeout(() => setSent(false), 4000);
+      }
+    } catch {
+      setError('Network error — please try again.');
+    }
     setSending(false);
-    if (error) setError(error.message);
-    else { setSent(true); setEmail(''); setTimeout(() => setSent(false), 3000); }
   }
 
   function copyLink() {
@@ -81,18 +95,35 @@ export default function ReferralsPage({ profile, referrals }: { profile: Profile
         <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
           Invite by Email
         </div>
-        <form onSubmit={sendReferral} style={{ display: 'flex', gap: '8px' }}>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="friend@example.com" required
+        <form onSubmit={sendReferral} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="friend@example.com" required
+              style={{
+                flex: 1, minWidth: '200px', background: '#161616', border: '1px solid var(--border)',
+                borderRadius: '8px', padding: '10px 14px', color: 'var(--text)', fontSize: '14px', outline: 'none',
+              }} />
+            <button type="submit" disabled={sending} className="btn-gold" style={{ padding: '10px 20px', fontSize: '13px' }}>
+              {sent ? '✅ Sent!' : sending ? 'Sending…' : 'Send Invite'}
+            </button>
+          </div>
+          <textarea
+            value={personalNote}
+            onChange={e => setPersonalNote(e.target.value)}
+            placeholder="(Optional) Add a personal note — e.g. 'Thought of you for this. The community is amazing.'"
+            rows={2}
+            maxLength={400}
             style={{
-              flex: 1, background: '#161616', border: '1px solid var(--border)',
-              borderRadius: '8px', padding: '10px 14px', color: 'var(--text)', fontSize: '14px', outline: 'none',
-            }} />
-          <button type="submit" disabled={sending} className="btn-gold" style={{ padding: '10px 20px', fontSize: '13px' }}>
-            {sent ? '✅ Sent!' : sending ? '…' : 'Invite'}
-          </button>
+              width: '100%', background: '#161616', border: '1px solid var(--border)',
+              borderRadius: '8px', padding: '10px 14px', color: 'var(--text)', fontSize: '13px',
+              outline: 'none', resize: 'vertical', fontFamily: 'inherit',
+            }}
+          />
+          <div style={{ fontSize: '11px', color: 'var(--muted)' }}>
+            We&apos;ll email them a personalized invite with your referral link.
+          </div>
         </form>
-        {error && <div style={{ color: '#ef4444', fontSize: '13px', marginTop: '8px' }}>{error}</div>}
+        {error && <div style={{ color: '#ef4444', fontSize: '13px', marginTop: '8px' }}>⚠️ {error}</div>}
       </div>
 
       {/* Referral history */}
