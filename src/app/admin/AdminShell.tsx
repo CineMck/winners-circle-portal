@@ -46,8 +46,12 @@ export default function AdminShell({ profile, children }: { profile: Profile; ch
           ☰
         </button>
         <Logo size={22} />
-        <div style={{ flex: 1, fontWeight: 800, color: 'var(--gold)', fontSize: 14 }}>
-          Winner&apos;s Circle <span style={{ color: '#ef4444', fontSize: 11, marginLeft: 6 }}>ADMIN</span>
+        <div style={{
+          flex: 1, color: 'var(--gold)', fontSize: 14,
+          fontFamily: 'var(--font-brand), Georgia, serif',
+          fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+        }}>
+          The Winners Circle <span style={{ color: '#ef4444', fontSize: 10, marginLeft: 6, letterSpacing: '0.1em' }}>ADMIN</span>
         </div>
         <Link
           href="/home"
@@ -81,8 +85,12 @@ export default function AdminShell({ profile, children }: { profile: Profile; ch
         <div style={{ padding: '20px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <Logo size={22} />
-              <span style={{ fontWeight: 800, color: 'var(--gold)', fontSize: '14px' }}>Winner&apos;s Circle</span>
+              <Logo size={28} />
+              <span style={{
+                color: 'var(--gold)', fontSize: '13px',
+                fontFamily: 'var(--font-brand), Georgia, serif',
+                fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
+              }}>The Winners Circle</span>
             </div>
             <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               ⚙️ Admin Panel

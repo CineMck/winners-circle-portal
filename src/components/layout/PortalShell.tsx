@@ -52,9 +52,20 @@ export default function PortalShell({ profile, channels, children }: Props) {
         display: 'flex', alignItems: 'center', padding: '0 20px',
         justifyContent: 'space-between', zIndex: 100,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Logo size={32} />
-          <span style={{ fontWeight: 800, fontSize: '16px', color: 'var(--gold)' }}>Winner&apos;s Circle</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Logo size={56} />
+          <span style={{
+            fontFamily: 'var(--font-brand), Georgia, serif',
+            fontWeight: 700,
+            fontSize: '20px',
+            color: 'var(--gold)',
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            lineHeight: 1,
+            whiteSpace: 'nowrap',
+          }}>
+            The Winners Circle
+          </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <NotificationBell userId={profile?.id} />

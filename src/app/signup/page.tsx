@@ -147,8 +147,12 @@ export default function SignupPage() {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <Logo size={72} ring style={{ margin: '0 auto 16px' }} />
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text)', marginBottom: '6px' }}>
-            Join the Winner&apos;s Circle
+          <h1 style={{
+            fontSize: '22px', color: 'var(--gold)', marginBottom: '6px',
+            fontFamily: 'var(--font-brand), Georgia, serif',
+            fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+          }}>
+            Join The Winners Circle
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
             {stage === 'tier' && 'Choose your membership level'}

@@ -1,5 +1,16 @@
 import type { Metadata, Viewport } from 'next';
+import { Cinzel } from 'next/font/google';
 import './globals.css';
+
+// Brand wordmark font — Trajan-style Roman capitals, matches the Winners
+// Circle logo treatment. Loaded as a CSS variable for use in selected
+// brand spots only (topbar header, splash, certificates, etc.).
+const cinzel = Cinzel({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-brand',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: "Winner's Circle | Members Portal",
@@ -19,7 +30,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={cinzel.variable}>
       <body>{children}</body>
     </html>
   );
