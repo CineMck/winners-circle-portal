@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import { Post, Profile } from '@/types';
 import PostCard from '@/components/feed/PostCard';
 import PostComposer from '@/components/feed/PostComposer';
+import PullToRefresh from '@/components/PullToRefresh';
 import { createClient } from '@/lib/supabase/client';
 import { getTierColor, getTierLabel } from '@/lib/utils';
 import Link from 'next/link';
@@ -54,6 +55,7 @@ export default function HomeFeed({ profile, initialPosts, topMembers, isAdmin }:
   }
 
   return (
+    <PullToRefresh onRefresh={refreshFeed}>
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '24px', padding: '24px', maxWidth: '1100px' }} className="home-grid">
       {/* Feed */}
       <div>
@@ -78,6 +80,7 @@ export default function HomeFeed({ profile, initialPosts, topMembers, isAdmin }:
             onClick={refreshFeed}
             disabled={refreshing}
             title="Refresh feed"
+            className="desktop-refresh-btn"
             style={{
               flexShrink: 0, background: 'none', border: '1px solid rgba(201,168,76,0.3)',
               borderRadius: '8px', padding: '7px 12px', cursor: refreshing ? 'not-allowed' : 'pointer',
@@ -214,8 +217,10 @@ export default function HomeFeed({ profile, initialPosts, topMembers, isAdmin }:
         @media (max-width: 900px) {
           .home-grid { grid-template-columns: 1fr !important; }
           .home-sidebar { display: none; }
+          .desktop-refresh-btn { display: none !important; }
         }
       `}</style>
     </div>
+    </PullToRefresh>
   );
 }
