@@ -32,25 +32,33 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* iOS Capacitor safe-area handling — push content below the notch/status bar
+/* iOS Capacitor safe-area handling — push fixed elements below the notch
    and above the home indicator. The .has-safe-area class is added to <body>
-   by NativePushBootstrap when running inside the native shell. */
+   by NativePushBootstrap when running inside the native shell.
+
+   Layout (top to bottom):
+     1. .app-topbar       — topbar, top=0, height = 64 + inset-top
+     2. .mobile-nav       — secondary nav row, top = topbar height
+     3. .channel-sub-nav  — only on /community, top = topbar + mobile-nav
+     4. .main-content     — content area, padding-top accounts for all the above
+*/
 body.has-safe-area .app-topbar {
   padding-top: env(safe-area-inset-top, 0px) !important;
   height: calc(var(--topbar-h) + env(safe-area-inset-top, 0px)) !important;
 }
-body.has-safe-area .channel-sub-nav,
-body.has-safe-area .sidebar,
-body.has-safe-area .main-content {
+body.has-safe-area .sidebar {
   top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px)) !important;
 }
+body.has-safe-area .mobile-nav {
+  top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px)) !important;
+}
+body.has-safe-area .channel-sub-nav {
+  top: calc(var(--topbar-h) + var(--mobile-nav-h) + env(safe-area-inset-top, 0px)) !important;
+}
+/* Desktop: only the topbar push matters */
 body.has-safe-area .main-content {
   padding-top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px)) !important;
   padding-bottom: env(safe-area-inset-bottom, 0px) !important;
-}
-body.has-safe-area .mobile-nav {
-  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
-  height: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom, 0px)) !important;
 }
 @media (max-width: 900px) {
   body.has-safe-area .main-content {
