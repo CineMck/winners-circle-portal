@@ -52,6 +52,19 @@ export default async function ConversationPage({ params }: { params: Promise<{ c
     .order('created_at', { ascending: true })
     .limit(100);
 
+  // Profiles for senders who are no longer participants (removed from the
+  // group) so their old messages still show a name and avatar.
+  const participantIds = new Set([user.id, ...(otherRows || []).map(r => r.user_id)]);
+  const formerSenderIds = [...new Set((messages || []).map(m => m.sender_id))].filter(id => !participantIds.has(id));
+  let formerMembers: unknown[] = [];
+  if (formerSenderIds.length > 0) {
+    const { data: formerProfiles } = await supabaseAdmin
+      .from('profiles')
+      .select('id, full_name, avatar_url, tier, username')
+      .in('id', formerSenderIds);
+    formerMembers = formerProfiles || [];
+  }
+
   // Mark as read
   await supabaseAdmin
     .from('conversation_participants')
@@ -59,13 +72,17 @@ export default async function ConversationPage({ params }: { params: Promise<{ c
     .eq('conversation_id', conversationId)
     .eq('user_id', user.id);
 
+  type ViewUser = { id: string; full_name: string; avatar_url?: string; tier: string; username: string };
+
   return (
     <ConversationView
       conversationId={conversationId}
       profile={profile}
       isGroup={conv.is_group || false}
       groupName={conv.name || null}
-      otherUsers={(otherUsers as unknown) as { id: string; full_name: string; avatar_url?: string; tier: string; username: string }[]}
+      isAdmin={['admin', 'moderator'].includes(profile?.role)}
+      otherUsers={(otherUsers as unknown) as ViewUser[]}
+      formerMembers={(formerMembers as unknown) as ViewUser[]}
       initialMessages={messages || []}
     />
   );

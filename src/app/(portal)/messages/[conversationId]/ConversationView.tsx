@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Profile, MemberTier, getTierColor, getInitials } from '@/types';
 import Link from 'next/link';
@@ -12,7 +13,9 @@ interface Props {
   profile: Profile;
   isGroup: boolean;
   groupName: string | null;
+  isAdmin: boolean;
   otherUsers: OtherUser[];
+  formerMembers: OtherUser[];
   initialMessages: Message[];
 }
 
@@ -33,15 +36,23 @@ function UserBubbleAvatar({ user, size = 28 }: { user?: OtherUser; size?: number
   );
 }
 
-export default function ConversationView({ conversationId, profile, isGroup, groupName, otherUsers, initialMessages }: Props) {
+export default function ConversationView({ conversationId, profile, isGroup, groupName, isAdmin, otherUsers, formerMembers, initialMessages }: Props) {
   const supabase = createClient();
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Manage-members panel (group + admin only)
+  const [manageOpen, setManageOpen] = useState(false);
+  const [directory, setDirectory] = useState<OtherUser[] | null>(null);
+  const [addSearch, setAddSearch] = useState('');
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [manageError, setManageError] = useState('');
 
   const otherUser = otherUsers[0]; // 1:1 partner
   const usersById: Record<string, OtherUser> = {};
+  formerMembers.forEach(u => { if (u) usersById[u.id] = u; });
   otherUsers.forEach(u => { if (u) usersById[u.id] = u; });
 
   const otherTc = getTierColor((otherUser?.tier as MemberTier) || 'free');
@@ -85,6 +96,48 @@ export default function ConversationView({ conversationId, profile, isGroup, gro
     return () => { supabase.removeChannel(channel); };
   }, [conversationId, profile.id, supabase]);
 
+  async function openManage() {
+    setManageOpen(true);
+    setManageError('');
+    if (!directory) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, tier, username')
+        .order('full_name');
+      setDirectory((data as OtherUser[]) || []);
+    }
+  }
+
+  async function changeMembers(payload: { add?: string[]; remove?: string[] }, busy: string) {
+    setBusyId(busy);
+    setManageError('');
+    try {
+      const res = await fetch('/api/messages/participants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId, ...payload }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setManageError(json.error || 'Something went wrong.');
+      } else {
+        router.refresh(); // re-fetch participants server-side
+      }
+    } catch {
+      setManageError('Something went wrong.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const participantIds = new Set([profile.id, ...otherUsers.map(u => u?.id).filter(Boolean)]);
+  const addable = (directory || []).filter(m =>
+    m.id !== profile.id &&
+    !participantIds.has(m.id) &&
+    (m.full_name?.toLowerCase().includes(addSearch.toLowerCase()) ||
+     m.username?.toLowerCase().includes(addSearch.toLowerCase()))
+  );
+
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || sending) return;
@@ -119,16 +172,29 @@ export default function ConversationView({ conversationId, profile, isGroup, gro
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--black-card)', flexShrink: 0 }}>
         <Link href="/messages" style={{ color: 'var(--muted)', textDecoration: 'none', fontSize: '20px', marginRight: '4px' }}>←</Link>
         {isGroup ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
             <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gold-dim)', border: '2px solid var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px', flexShrink: 0 }}>
               👥
             </div>
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
               <div style={{ fontSize: '11px', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {otherUsers.length + 1} members · {otherUsers.map(u => u?.full_name?.split(' ')[0]).filter(Boolean).slice(0, 6).join(', ')}{otherUsers.length > 6 ? '…' : ''}
               </div>
             </div>
+            {isAdmin && (
+              <button
+                onClick={() => manageOpen ? setManageOpen(false) : openManage()}
+                style={{
+                  padding: '7px 12px', fontSize: '12px', borderRadius: '8px', flexShrink: 0,
+                  background: manageOpen ? 'var(--gold-dim)' : 'none',
+                  border: '1px solid var(--gold)', color: 'var(--gold)',
+                  fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                {manageOpen ? '✕ Done' : '⚙️ Manage'}
+              </button>
+            )}
           </div>
         ) : (
           <Link href={`/profile/${otherUser?.username}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
@@ -142,6 +208,87 @@ export default function ConversationView({ conversationId, profile, isGroup, gro
           </Link>
         )}
       </div>
+
+      {/* Manage members panel (group + admin only) */}
+      {isGroup && isAdmin && manageOpen && (
+        <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--black-card)', maxHeight: '45vh', overflowY: 'auto', flexShrink: 0 }}>
+          <div style={{ padding: '14px 20px 6px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 600, margin: '0 0 8px' }}>
+              MEMBERS ({otherUsers.length + 1})
+            </p>
+            {manageError && (
+              <p style={{ fontSize: '12px', color: 'var(--danger)', margin: '0 0 8px' }}>{manageError}</p>
+            )}
+            {/* You */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0' }}>
+              <UserBubbleAvatar user={{ id: profile.id, full_name: profile.full_name, avatar_url: profile.avatar_url || undefined, tier: profile.tier, username: profile.username || '' }} size={32} />
+              <div style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
+                {profile.full_name} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(you)</span>
+              </div>
+            </div>
+            {/* Other members */}
+            {otherUsers.map(u => (
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0' }}>
+                <UserBubbleAvatar user={u} size={32} />
+                <div style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                  {u.full_name} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>@{u.username}</span>
+                </div>
+                <button
+                  onClick={() => changeMembers({ remove: [u.id] }, u.id)}
+                  disabled={busyId === u.id}
+                  style={{
+                    padding: '4px 10px', fontSize: '11px', borderRadius: '6px', flexShrink: 0,
+                    background: 'none', border: '1px solid var(--danger)', color: 'var(--danger)',
+                    fontWeight: 700, cursor: 'pointer', opacity: busyId === u.id ? 0.5 : 1,
+                  }}
+                >
+                  {busyId === u.id ? '…' : 'Remove'}
+                </button>
+              </div>
+            ))}
+          </div>
+          {/* Add members */}
+          <div style={{ padding: '8px 20px 16px', borderTop: '1px solid var(--border)', marginTop: '8px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: 600, margin: '10px 0 8px' }}>ADD MEMBERS</p>
+            <input
+              value={addSearch} onChange={e => setAddSearch(e.target.value)}
+              placeholder="Search members…"
+              style={{
+                width: '100%', background: '#0d0d0d', border: '1px solid var(--border)',
+                borderRadius: '8px', padding: '8px 12px', color: 'var(--text)',
+                fontSize: '13px', outline: 'none', boxSizing: 'border-box', marginBottom: '6px',
+              }}
+            />
+            {directory === null ? (
+              <p style={{ fontSize: '12px', color: 'var(--muted)', margin: '8px 0' }}>Loading members…</p>
+            ) : addable.length === 0 ? (
+              <p style={{ fontSize: '12px', color: 'var(--muted)', margin: '8px 0' }}>
+                {addSearch ? 'No members match your search.' : 'Everyone is already in this group.'}
+              </p>
+            ) : (
+              addable.slice(0, 20).map(m => (
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0' }}>
+                  <UserBubbleAvatar user={m} size={32} />
+                  <div style={{ flex: 1, fontSize: '13px', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                    {m.full_name} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>@{m.username}</span>
+                  </div>
+                  <button
+                    onClick={() => changeMembers({ add: [m.id] }, m.id)}
+                    disabled={busyId === m.id}
+                    style={{
+                      padding: '4px 10px', fontSize: '11px', borderRadius: '6px', flexShrink: 0,
+                      background: 'none', border: '1px solid var(--gold)', color: 'var(--gold)',
+                      fontWeight: 700, cursor: 'pointer', opacity: busyId === m.id ? 0.5 : 1,
+                    }}
+                  >
+                    {busyId === m.id ? '…' : '+ Add'}
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
