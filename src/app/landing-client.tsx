@@ -101,7 +101,6 @@ const APP_FEATURES = [
 ];
 
 const TESTIMONIAL_VIDEOS = [
-  'https://player.vimeo.com/video/1197128238?h=f5f60bc0ea&badge=0&autopause=0&player_id=0&app_id=58479&title=0&byline=0&portrait=0',
   'https://player.vimeo.com/video/1197128239?h=6957195b53&badge=0&autopause=0&player_id=0&app_id=58479&title=0&byline=0&portrait=0',
   'https://player.vimeo.com/video/1197128375?h=3ebb88ddb2&badge=0&autopause=0&player_id=0&app_id=58479&title=0&byline=0&portrait=0',
   'https://player.vimeo.com/video/1197128241?h=56144d82c4&badge=0&autopause=0&player_id=0&app_id=58479&title=0&byline=0&portrait=0',

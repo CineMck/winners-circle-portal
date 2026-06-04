@@ -1247,8 +1247,8 @@
       border-color: rgba(201,162,39,0.2);
     }
     .lp .t-card:nth-child(1), .lp .t-card:nth-child(2), .lp .t-card:nth-child(3) { grid-column: span 2; }
-    .lp .t-card:nth-child(4) { grid-column: 2 / 4; }
-    .lp .t-card:nth-child(5) { grid-column: 4 / 6; }
+    /* 4 videos: three across the top, the last one centered below */
+    .lp .t-card:nth-child(4) { grid-column: 3 / 5; }
     .lp .t-video-wrap {
       padding: 56.25% 0 0 0;
       position: relative;
