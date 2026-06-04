@@ -398,6 +398,10 @@ export default function RealEstateClient() {
       {/* ── REGISTRATION FORM ── */}
       <section className="register-section" id="register">
         <div className="container">
+          <div className="register-urgency reveal">
+            <span className="ru-text">Limited seating — Spots filling up fast!</span>
+            <span className="ru-countdown">{countdown}</span>
+          </div>
           <div className="register-box reveal">
             {submitted ? (
               <div className="register-header" style={{ marginBottom: 0 }}>
