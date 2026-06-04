@@ -25,7 +25,11 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg);
       color: var(--text);
-      overflow-x: hidden;
+      /* NOTE: no overflow-x here — an overflow value other than visible/clip
+         on this wrapper turns it into a scroll container and breaks the
+         position: sticky pinned sections. Horizontal overflow is already
+         clipped by html/body rules in globals.css. */
+      overflow-x: clip;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }

@@ -30,8 +30,11 @@ html, body {
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
-  /* Clip any accidental horizontal overflow — fixes "app too wide" on iOS WebView */
+  /* Clip any accidental horizontal overflow — fixes "app too wide" on iOS WebView.
+     `clip` (with `hidden` as fallback for old WebViews) clips without creating
+     a scroll container, so position: sticky keeps working on the landing page. */
   overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
 }
 
