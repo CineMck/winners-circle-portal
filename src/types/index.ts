@@ -1,4 +1,4 @@
-export type MemberTier = 'free' | 'core' | 'elite' | 'founding';
+export type MemberTier = 'free' | 'core' | 'elite' | 'founding' | 're_promo';
 export type UserRole = 'member' | 'moderator' | 'admin';
 
 export interface Profile {
@@ -222,12 +222,31 @@ export const TIER_CONFIGS: Record<MemberTier, TierConfig> = {
       'Elite member badge forever',
     ],
   },
+  // Special parallel tier for Elevate Real Estate Mastermind promo attendees.
+  // Not a purchasable plan — never shown on signup/upgrade (those iterate
+  // fixed tier lists). Assignable from the admin Members page.
+  re_promo: {
+    name: 're_promo',
+    label: 'Real Estate Promo',
+    price_monthly: 0,
+    price_annual: 0,
+    stripe_price_id_monthly: '',
+    stripe_price_id_annual: '',
+    color: '#7aa5d9',
+    features: ['Access to Real Estate Promo events'],
+  },
 };
 
+/** Hierarchy used for upgrade logic — re_promo sits outside it (treated as free). */
 export const TIER_ORDER: MemberTier[] = ['free', 'core', 'elite', 'founding'];
 
 export function canAccessTier(userTier: MemberTier, requiredTier: MemberTier): boolean {
-  return TIER_ORDER.indexOf(userTier) >= TIER_ORDER.indexOf(requiredTier);
+  // Real Estate Promo content: promo members only (plus 1-1 Elite, so John
+  // and top-tier members can still see/join those sessions).
+  if (requiredTier === 're_promo') return userTier === 're_promo' || userTier === 'founding';
+  // A promo member ranks like a free member for everything else.
+  const userRank = userTier === 're_promo' ? 0 : TIER_ORDER.indexOf(userTier);
+  return userRank >= TIER_ORDER.indexOf(requiredTier);
 }
 
 /**
@@ -258,7 +277,7 @@ export const ACCESS_GROUP_OPTIONS: { value: AccessGroup; label: string; hint: st
 export function canAccessGroup(userTier: MemberTier, group: AccessGroup): boolean {
   switch (group) {
     case 'all':        return true;
-    case 'paid':       return userTier !== 'free';
+    case 'paid':       return userTier !== 'free' && userTier !== 're_promo';
     case 'elevate':    return userTier === 'elite' || userTier === 'founding';
     case 'one_on_one': return userTier === 'founding';
     default:           return false;
@@ -272,6 +291,7 @@ export function tierRequiredToAccessGroup(tier: MemberTier): AccessGroup {
     case 'core':     return 'paid';
     case 'elite':    return 'elevate';
     case 'founding': return 'one_on_one';
+    case 're_promo': return 'all';
   }
 }
 

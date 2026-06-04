@@ -97,9 +97,10 @@ export default function EventsAdmin({ events: initial, adminId }: { events: Even
               <label style={labelStyle}>Tier Required</label>
               <select style={inputStyle} value={form.tier_required} onChange={e => setForm({ ...form, tier_required: e.target.value })}>
                 <option value="free">Free (all members)</option>
-                <option value="core">Core+</option>
-                <option value="elite">Elite+</option>
-                <option value="founding">Founding Only</option>
+                <option value="core">Core</option>
+                <option value="elite">Elevate</option>
+                <option value="founding">1-1 Elite</option>
+                <option value="re_promo">Real Estate Promo Only</option>
               </select>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingTop: '20px' }}>

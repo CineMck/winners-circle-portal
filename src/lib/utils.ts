@@ -34,18 +34,20 @@ export function getTierColor(tier: MemberTier): string {
     core: '#c9a84c',
     elite: '#e0c068',
     founding: '#ffd700',
+    re_promo: '#7aa5d9',
   };
-  return colors[tier];
+  return colors[tier] || '#888888';
 }
 
 export function getTierLabel(tier: MemberTier): string {
   const labels: Record<MemberTier, string> = {
     free: 'Free',
     core: 'Core',
-    elite: 'Elite',
-    founding: 'Founding',
+    elite: 'Elevate',
+    founding: '1-1 Elite',
+    re_promo: 'RE Promo',
   };
-  return labels[tier];
+  return labels[tier] || tier;
 }
 
 export function getInitials(name: string): string {

@@ -174,8 +174,9 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
           <option value="all">All Tiers</option>
           <option value="free">Free</option>
           <option value="core">Core</option>
-          <option value="elite">Elite</option>
-          <option value="founding">Founding</option>
+          <option value="elite">Elevate</option>
+          <option value="founding">1-1 Elite</option>
+          <option value="re_promo">RE Promo</option>
         </select>
       </div>
 
@@ -355,9 +356,10 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
                 <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '6px' }}>Membership Tier</label>
                 <select value={inviteTier} onChange={e => setInviteTier(e.target.value as MemberTier)} style={inputStyle}>
                   <option value="free">Free</option>
-                  <option value="core">Core Member ($150/mo)</option>
+                  <option value="core">Core ($150/mo)</option>
                   <option value="elite">Elevate ($495/mo)</option>
-                  <option value="founding">Founding Member ($497/mo)</option>
+                  <option value="founding">1-1 Elite ($497/mo)</option>
+                  <option value="re_promo">Real Estate Promo (free)</option>
                 </select>
               </div>
 

@@ -209,7 +209,13 @@ function ProfileTab({ profile, lastLogin, onUpdate }: { profile: Profile; lastLo
             <Label>Tier</Label>
             {editing ? (
               <select value={tier} onChange={e => setTier(e.target.value as MemberTier)} style={inp}>
-                {['free', 'core', 'elite', 'founding'].map(t => <option key={t} value={t}>{t}</option>)}
+                {([
+                  ['free', 'Free'],
+                  ['core', 'Core'],
+                  ['elite', 'Elevate'],
+                  ['founding', '1-1 Elite'],
+                  ['re_promo', 'Real Estate Promo'],
+                ] as const).map(([t, label]) => <option key={t} value={t}>{label}</option>)}
               </select>
             ) : (
               <span style={{ fontSize: '13px', fontWeight: 700, color: tc, border: `1px solid ${tc}`, padding: '3px 10px', borderRadius: '20px' }}>

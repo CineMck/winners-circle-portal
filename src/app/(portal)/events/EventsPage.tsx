@@ -11,8 +11,11 @@ interface Event {
 
 interface Props { profile: Profile; events: Event[]; myRsvpIds: string[]; }
 
-const TIER_ORDER: Record<string, number> = { free: 0, core: 1, elite: 2, founding: 3 };
+const TIER_ORDER: Record<string, number> = { free: 0, re_promo: 0, core: 1, elite: 2, founding: 3 };
 function canAccess(userTier: string, required: string) {
+  // Real Estate Promo events: promo members only (plus 1-1 Elite, so John
+  // and top-tier members can still see/join those sessions).
+  if (required === 're_promo') return userTier === 're_promo' || userTier === 'founding';
   return (TIER_ORDER[userTier] ?? 0) >= (TIER_ORDER[required] ?? 0);
 }
 
@@ -173,7 +176,7 @@ export default function EventsPage({ profile, events, myRsvpIds }: Props) {
     const accessible = canAccess(profile?.tier, ev.tier_required);
     const isRsvped = rsvps.has(ev.id);
     const rsvpCount = ev.rsvp_count?.[0]?.count || 0;
-    const tierColor = getTierColor(ev.tier_required as 'free'|'core'|'elite'|'founding');
+    const tierColor = getTierColor(ev.tier_required as 'free'|'core'|'elite'|'founding'|'re_promo');
     const endsAt = new Date(d.getTime() + ev.duration_minutes * 60000);
     const isLive = now >= d && now <= endsAt;
 
@@ -207,7 +210,7 @@ export default function EventsPage({ profile, events, myRsvpIds }: Props) {
               <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>{ev.title}</h3>
               {ev.tier_required !== 'free' && (
                 <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', border: `1px solid ${tierColor}`, color: tierColor, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                  {accessible ? '' : '🔒 '}{getTierLabel(ev.tier_required as 'free'|'core'|'elite'|'founding')}+
+                  {accessible ? '' : '🔒 '}{getTierLabel(ev.tier_required as 'free'|'core'|'elite'|'founding'|'re_promo')}{ev.tier_required === 're_promo' ? '' : '+'}
                 </span>
               )}
             </div>
