@@ -25,13 +25,22 @@ export default async function ConversationPage({ params }: { params: Promise<{ c
 
   if (!myRow) notFound();
 
-  // Get other participant
-  const { data: otherRow } = await supabaseAdmin
+  // Conversation meta (group name etc.)
+  const { data: conv } = await supabaseAdmin
+    .from('conversations')
+    .select('id, is_group, name')
+    .eq('id', conversationId)
+    .single();
+  if (!conv) notFound();
+
+  // Get all other participants (one for a 1:1, many for a group)
+  const { data: otherRows } = await supabaseAdmin
     .from('conversation_participants')
     .select('user_id, profiles:profiles!user_id(id, full_name, avatar_url, tier, username)')
     .eq('conversation_id', conversationId)
-    .neq('user_id', user.id)
-    .single();
+    .neq('user_id', user.id);
+
+  const otherUsers = (otherRows || []).map(r => r.profiles).filter(Boolean);
 
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
 
@@ -54,7 +63,9 @@ export default async function ConversationPage({ params }: { params: Promise<{ c
     <ConversationView
       conversationId={conversationId}
       profile={profile}
-      otherUser={(otherRow?.profiles as unknown) as { id: string; full_name: string; avatar_url?: string; tier: string; username: string }}
+      isGroup={conv.is_group || false}
+      groupName={conv.name || null}
+      otherUsers={(otherUsers as unknown) as { id: string; full_name: string; avatar_url?: string; tier: string; username: string }[]}
       initialMessages={messages || []}
     />
   );

@@ -27,6 +27,11 @@ export default async function MessagesPage() {
 
     let conversations: unknown[] = [];
     if (convIds.length > 0) {
+      const { data: convMeta } = await supabaseAdmin
+        .from('conversations')
+        .select('id, is_group, name')
+        .in('id', convIds);
+
       const { data: otherParticipants } = await supabaseAdmin
         .from('conversation_participants')
         .select('conversation_id, user_id, profiles:profiles!user_id(id, full_name, avatar_url, tier, username)')
@@ -47,11 +52,23 @@ export default async function MessagesPage() {
       const readAtByConv: Record<string, string | null> = {};
       (participantRows || []).forEach(r => { readAtByConv[r.conversation_id] = r.last_read_at; });
 
-      conversations = (otherParticipants || []).map(op => ({
-        conversationId: op.conversation_id,
-        other: op.profiles,
-        lastMessage: lastMsgByConv[op.conversation_id] || null,
-        lastReadAt: readAtByConv[op.conversation_id] || null,
+      const metaByConv: Record<string, { is_group: boolean; name: string | null }> = {};
+      (convMeta || []).forEach(c => { metaByConv[c.id] = { is_group: c.is_group, name: c.name }; });
+
+      // Group the other-participant rows by conversation (groups have many).
+      const othersByConv: Record<string, unknown[]> = {};
+      (otherParticipants || []).forEach(op => {
+        (othersByConv[op.conversation_id] ||= []).push(op.profiles);
+      });
+
+      conversations = convIds.map(id => ({
+        conversationId: id,
+        isGroup: metaByConv[id]?.is_group || false,
+        name: metaByConv[id]?.name || null,
+        others: othersByConv[id] || [],
+        other: (othersByConv[id] || [])[0] || null,
+        lastMessage: lastMsgByConv[id] || null,
+        lastReadAt: readAtByConv[id] || null,
       })).sort((a: unknown, b: unknown) => {
         const ta = (a as { lastMessage: { created_at: string } | null }).lastMessage?.created_at || '';
         const tb = (b as { lastMessage: { created_at: string } | null }).lastMessage?.created_at || '';
@@ -65,7 +82,9 @@ export default async function MessagesPage() {
       .neq('id', user.id)
       .order('full_name');
 
-    return <MessagesInbox profile={profile} conversations={conversations as never} members={members || []} />;
+    const isAdmin = ['admin', 'moderator'].includes(profile?.role);
+
+    return <MessagesInbox profile={profile} conversations={conversations as never} members={members || []} isAdmin={isAdmin} />;
   } catch (err) {
     console.error('MessagesPage error:', err);
     return (
