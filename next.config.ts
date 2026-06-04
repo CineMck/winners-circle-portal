@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
   },
   // Silence Stripe server-only import warnings in client build
   serverExternalPackages: ['stripe'],
+  async redirects() {
+    return [
+      // Alias matching the original landing-site URL for this page.
+      // (Note: redirect sources match case-insensitively, so a source that
+      // only differs from its destination by case creates a redirect loop —
+      // case normalization for /Real-Estate lives in middleware instead.)
+      { source: '/elevate-real-estate', destination: '/real-estate', permanent: false },
+    ];
+  },
   async headers() {
     return [
       {
