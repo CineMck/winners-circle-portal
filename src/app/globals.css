@@ -79,6 +79,12 @@ html, body {
   }
 }
 
+/* Hide the topbar wordmark on narrow screens — logo alone carries the brand
+   there, and the avatar + bell need the room. */
+@media (max-width: 640px) {
+  .brand-wordmark { display: none !important; }
+}
+
 /* iOS Capacitor safe-area handling — push fixed elements below the notch
    and above the home indicator. The .has-safe-area class is added to <body>
    by NativePushBootstrap when running inside the native shell.

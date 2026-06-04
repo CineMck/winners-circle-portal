@@ -52,9 +52,9 @@ export default function PortalShell({ profile, channels, children }: Props) {
         display: 'flex', alignItems: 'center', padding: '0 20px',
         justifyContent: 'space-between', zIndex: 100,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flexShrink: 1 }}>
           <Logo size={56} />
-          <span style={{
+          <span className="brand-wordmark" style={{
             fontFamily: 'var(--font-brand), Georgia, serif',
             fontWeight: 700,
             fontSize: '20px',
@@ -63,6 +63,8 @@ export default function PortalShell({ profile, channels, children }: Props) {
             textTransform: 'uppercase',
             lineHeight: 1,
             whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
           }}>
             The Winners Circle
           </span>
