@@ -192,6 +192,7 @@ export async function registerNativePushToken(): Promise<{
 
     // Safety timeout — APNs registration occasionally hangs
     setTimeout(() => {
+      if (resolved) return;
       console.warn('[push] ⏱ 15s timeout — no registration event fired');
       finish({ ok: false, reason: 'error' });
     }, 15_000);

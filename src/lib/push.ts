@@ -15,6 +15,7 @@
 import { createClient } from '@supabase/supabase-js';
 import webpush from 'web-push';
 import { getFirebaseMessaging } from './firebase-admin';
+import { sendApnsToTokens } from './apns';
 
 export interface PushPayload {
   title: string;
@@ -47,25 +48,44 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload) {
   const supabase = adminClient();
   let sent = 0, failed = 0;
 
-  // 1. Native (FCM) -----------------------------------------------------
+  // 1. Native push -------------------------------------------------------
+  // iOS tokens (from @capacitor/push-notifications) are raw APNs device
+  // tokens — send via APNs directly. Android tokens are FCM — send via
+  // firebase-admin.
   const { data: tokens } = await supabase
     .from('device_push_tokens')
-    .select('token')
+    .select('token, platform')
     .in('user_id', userIds);
 
-  if (tokens && tokens.length > 0) {
+  const iosTokens = (tokens || []).filter(t => t.platform === 'ios').map(t => t.token);
+  const androidTokens = (tokens || []).filter(t => t.platform === 'android').map(t => t.token);
+
+  // -- iOS via APNs --
+  if (iosTokens.length > 0) {
+    try {
+      const result = await sendApnsToTokens(iosTokens, payload);
+      sent += result.sent;
+      failed += result.failed;
+      if (result.stale.length > 0) {
+        await supabase.from('device_push_tokens').delete().in('token', result.stale);
+      }
+    } catch (err) {
+      console.error('APNs send error:', err);
+      failed += iosTokens.length;
+    }
+  }
+
+  // -- Android via FCM --
+  if (androidTokens.length > 0) {
     try {
       const messaging = getFirebaseMessaging();
-      const tokenList = tokens.map((t) => t.token);
       const data: Record<string, string> = { ...(payload.data || {}) };
       if (payload.url) data.url = payload.url;
 
       const resp = await messaging.sendEachForMulticast({
-        tokens: tokenList,
+        tokens: androidTokens,
         notification: { title: payload.title, body: payload.body },
         data,
-        // iOS/Android per-platform tuning
-        apns: { payload: { aps: { sound: 'default' } } },
         android: { priority: 'high', notification: { sound: 'default' } },
       });
 
@@ -79,7 +99,7 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload) {
             code === 'messaging/registration-token-not-registered' ||
             code === 'messaging/invalid-argument'
           ) {
-            stale.push(tokenList[i]);
+            stale.push(androidTokens[i]);
           }
         }
       });
@@ -88,7 +108,7 @@ export async function sendPushToUsers(userIds: string[], payload: PushPayload) {
       }
     } catch (err) {
       console.error('FCM send error:', err);
-      failed += tokens.length;
+      failed += androidTokens.length;
     }
   }
 
