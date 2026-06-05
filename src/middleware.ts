@@ -32,7 +32,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/real-estate', request.url));
   }
 
-  // Public routes
+  // Public routes — pages anyone can visit, plus webhook + cron endpoints
+  // that authenticate themselves with their own signing secret (Stripe,
+  // Supabase Database Webhooks, scheduled-task cron).
   const publicRoutes = [
     '/login',
     '/signup',
@@ -44,9 +46,16 @@ export async function middleware(request: NextRequest) {
     '/terms',
     '/real-estate',
     '/api/real-estate/register',
+    // Server-to-server webhook + cron endpoints (validate themselves via signature/secret)
+    '/api/webhooks/',
+    '/api/push/webhook',
+    '/api/push/event-reminders',
   ];
   // Routes a signed-in user is still allowed to hit (don't bounce them to /home).
-  const allowLoggedIn = ['/auth/reset', '/privacy', '/terms', '/real-estate', '/api/real-estate/register'];
+  const allowLoggedIn = [
+    '/auth/reset', '/privacy', '/terms', '/real-estate', '/api/real-estate/register',
+    '/api/webhooks/', '/api/push/webhook', '/api/push/event-reminders',
+  ];
   if (pathname === '/' || publicRoutes.some(r => pathname.startsWith(r))) {
     if (user && !allowLoggedIn.some(r => pathname.startsWith(r)) && pathname !== '/') {
       return NextResponse.redirect(new URL('/home', request.url));
