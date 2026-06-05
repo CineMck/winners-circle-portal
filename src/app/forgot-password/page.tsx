@@ -18,8 +18,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setError('');
 
-    const redirectUrl =
-      `${process.env.NEXT_PUBLIC_APP_URL || 'https://winnerscircleportal.com'}/auth/reset`;
+    const redirectUrl = 'https://winnerscircleportal.com/auth/reset';
 
     const { error: resetErr } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: redirectUrl,

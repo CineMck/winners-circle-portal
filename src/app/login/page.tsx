@@ -31,7 +31,7 @@ export default function LoginPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://winnerscircleportal.com'}/auth/callback` },
+      options: { emailRedirectTo: 'https://winnerscircleportal.com/auth/callback' },
     });
     setLoading(false);
     if (error) setError(error.message);

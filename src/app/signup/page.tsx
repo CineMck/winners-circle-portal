@@ -7,6 +7,10 @@ import Logo from '@/components/Logo';
 
 const TIERS: MemberTier[] = ['free', 'core', 'elite'];
 
+// Current terms version. Bump when material changes are made — anyone who
+// signed up under an older version will be re-prompted in the portal.
+const CURRENT_TERMS_VERSION = '2026-06-04';
+
 // Detailed feature descriptions shown on the signup tier cards
 const TIER_FEATURE_DETAILS: Record<string, { title: string; desc: string }[]> = {
   free: [
@@ -59,11 +63,13 @@ type Stage = 'tier' | 'account' | 'profile' | 'done';
 export default function SignupPage() {
   const [stage, setStage] = useState<Stage>('tier');
   const [selectedTier, setSelectedTier] = useState<MemberTier>('core');
+  const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
 
   // Account fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
   // Profile / questionnaire fields
   const [industry, setIndustry] = useState('');
@@ -85,27 +91,40 @@ export default function SignupPage() {
   ];
   const currentStepIdx = steps.findIndex(s => s.id === stage);
 
+  const requiresPayment = selectedTier === 'core' || selectedTier === 'elite';
+
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError('');
+    if (!agreeTerms) {
+      setError('Please review and agree to the Terms of Service & Privacy Policy.');
+      return;
+    }
+    setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://winnerscircleportal.com'}/auth/callback`,
+        // Hardcoded so the link works no matter where the user signs up from
+        // (web, iOS WebView, local dev). Was bouncing to localhost:8080 before.
+        emailRedirectTo: 'https://winnerscircleportal.com/auth/callback',
       },
     });
     if (error) {
       setError(error.message);
       setLoading(false);
     } else {
-      // Save name to profile immediately
+      // Save name + terms acceptance immediately
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const username = fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
-        await supabase.from('profiles').update({ full_name: fullName.trim(), username }).eq('id', user.id);
+        await supabase.from('profiles').update({
+          full_name: fullName.trim(),
+          username,
+          terms_accepted_at: new Date().toISOString(),
+          terms_version: CURRENT_TERMS_VERSION,
+        }).eq('id', user.id);
       }
       setLoading(false);
       setStage('profile');
@@ -128,6 +147,35 @@ export default function SignupPage() {
           goals_30_days: goals30.trim() || null,
         }).eq('id', user.id);
       }
+
+      // Paid tier → send them to Stripe Checkout. The webhook updates their
+      // tier to 'core' or 'elite' once payment succeeds.
+      if (requiresPayment) {
+        const config = TIER_CONFIGS[selectedTier];
+        const priceId = billing === 'monthly'
+          ? config.stripe_price_id_monthly
+          : config.stripe_price_id_annual;
+        if (!priceId) {
+          setError('Stripe price not configured for this tier. Contact support.');
+          setLoading(false);
+          return;
+        }
+        const res = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ priceId }),
+        });
+        const { url } = await res.json();
+        if (url) {
+          window.location.href = url;
+          return; // Don't show "done" — Stripe will redirect back on success
+        }
+        setError('Could not start checkout. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      // Free tier → straight into the portal
       setStage('done');
       setTimeout(() => { window.location.href = '/home'; }, 1500);
     } catch {
@@ -135,6 +183,13 @@ export default function SignupPage() {
       setLoading(false);
     }
   }
+
+  const priceDisplay = (tier: MemberTier) => {
+    const config = TIER_CONFIGS[tier];
+    if (tier === 'free') return 'Free';
+    if (billing === 'monthly') return `$${config.price_monthly}/mo`;
+    return `$${Math.round(config.price_annual / 12)}/mo · $${config.price_annual}/yr`;
+  };
 
   return (
     <div style={{
@@ -197,6 +252,23 @@ export default function SignupPage() {
         {/* ── Step 1: Tier Selection ── */}
         {stage === 'tier' && (
           <>
+            {/* Monthly/Annual toggle */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+              <div style={{ display: 'inline-flex', gap: 4, background: '#111', border: '1px solid #1e1e1e', borderRadius: 10, padding: 4 }}>
+                {(['monthly', 'annual'] as const).map(b => (
+                  <button key={b} type="button" onClick={() => setBilling(b)} style={{
+                    padding: '8px 20px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                    background: billing === b ? 'var(--gold)' : 'transparent',
+                    color: billing === b ? '#0a0a0a' : '#888',
+                    fontWeight: billing === b ? 700 : 400, fontSize: 14,
+                    textTransform: 'capitalize',
+                  }}>
+                    {b} {b === 'annual' && <span style={{ fontSize: 11, background: '#22c55e', color: 'white', padding: '1px 6px', borderRadius: 10, marginLeft: 4 }}>Save 17%</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
               {TIERS.map(tier => {
                 const config = TIER_CONFIGS[tier];
@@ -211,7 +283,6 @@ export default function SignupPage() {
                     transition: 'all 0.15s', position: 'relative', overflow: 'hidden',
                     boxShadow: selected ? `0 0 28px ${config.color}44` : 'none',
                   }}>
-                    {/* Best Value badge */}
                     {isBestValue && (
                       <div style={{
                         position: 'absolute', top: 0, right: 0,
@@ -222,18 +293,18 @@ export default function SignupPage() {
                     )}
 
                     <div style={{ color: config.color, fontSize: '26px', marginBottom: '10px' }}>
-                      {tier === 'core' ? '⚡' : '🚀'}
+                      {tier === 'free' ? '🌱' : tier === 'core' ? '⚡' : '🚀'}
                     </div>
                     <div style={{ fontWeight: 800, fontSize: '20px', color: config.color, marginBottom: '2px' }}>
-                      {config.label.toUpperCase()} MEMBERSHIP
+                      {config.label.toUpperCase()}{tier !== 'free' && ' MEMBERSHIP'}
                     </div>
                     {isBestValue && (
                       <div style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>
                         Small Group Coaching — Limited To 10 People
                       </div>
                     )}
-                    <div style={{ fontSize: '28px', fontWeight: 700, color: '#fff', margin: '12px 0 20px' }}>
-                      ${config.price_monthly}<span style={{ fontSize: '15px', color: '#888', fontWeight: 400 }}> / Month</span>
+                    <div style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: '12px 0 20px' }}>
+                      {priceDisplay(tier)}
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -253,7 +324,6 @@ export default function SignupPage() {
                       ))}
                     </div>
 
-                    {/* Selection indicator */}
                     {selected && (
                       <div style={{
                         marginTop: '20px', padding: '8px', borderRadius: '8px',
@@ -279,6 +349,9 @@ export default function SignupPage() {
             <h2 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: '#fff' }}>Create your account</h2>
             <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#888' }}>
               Your <strong style={{ color: '#c9a84c' }}>{TIER_CONFIGS[selectedTier].label}</strong> membership starts here.
+              {requiresPayment && (
+                <> · Billing: <strong style={{ color: '#c9a84c' }}>{billing === 'monthly' ? 'Monthly' : 'Annual'}</strong></>
+              )}
             </p>
             <form onSubmit={handleSignup} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {error && (
@@ -301,8 +374,38 @@ export default function SignupPage() {
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                   placeholder="At least 8 characters" minLength={8} required style={inputStyle} />
               </div>
-              <button type="submit" disabled={loading} className="btn-gold"
-                style={{ width: '100%', padding: '14px', fontSize: '15px', fontWeight: 800, marginTop: '8px' }}>
+
+              {/* Terms agreement — must be checked */}
+              <label style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                background: '#0e0e0e', border: '1px solid #2a2a2a', borderRadius: 10,
+                padding: '12px 14px', cursor: 'pointer', marginTop: 4,
+              }}>
+                <input
+                  type="checkbox"
+                  checked={agreeTerms}
+                  onChange={e => setAgreeTerms(e.target.checked)}
+                  style={{ marginTop: 3, width: 16, height: 16, accentColor: '#c9a84c', cursor: 'pointer' }}
+                  required
+                />
+                <span style={{ fontSize: 12, color: '#bbb', lineHeight: 1.5 }}>
+                  I have read and agree to the{' '}
+                  <Link href="/terms" target="_blank" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>
+                    Terms of Service
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/privacy" target="_blank" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>
+                    Privacy Policy
+                  </Link>
+                  {requiresPayment && '. I understand my membership renews automatically and can be cancelled at any time.'}
+                </span>
+              </label>
+
+              <button type="submit" disabled={loading || !agreeTerms} className="btn-gold"
+                style={{
+                  width: '100%', padding: '14px', fontSize: '15px', fontWeight: 800, marginTop: '8px',
+                  opacity: agreeTerms ? 1 : 0.5, cursor: agreeTerms ? 'pointer' : 'not-allowed',
+                }}>
                 {loading ? 'Creating account…' : 'Continue →'}
               </button>
             </form>
@@ -318,7 +421,9 @@ export default function SignupPage() {
           <div style={{ background: '#111', border: '1px solid #1e1e1e', borderTop: '3px solid #c9a84c', borderRadius: '16px', padding: '36px' }}>
             <h2 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: '#fff' }}>Tell us about yourself</h2>
             <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#888' }}>
-              Help us personalise your experience in the Circle.
+              {requiresPayment
+                ? 'Quick profile, then we\'ll take you to checkout.'
+                : 'Help us personalise your experience in the Circle.'}
             </p>
             <form onSubmit={handleProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {error && (
@@ -327,7 +432,6 @@ export default function SignupPage() {
                 </div>
               )}
 
-              {/* Industry */}
               <div>
                 <label style={labelStyle}>What industry are you in? <span style={{ color: '#ef4444' }}>*</span></label>
                 <select value={industry} onChange={e => setIndustry(e.target.value)} required style={{
@@ -341,21 +445,18 @@ export default function SignupPage() {
                 </select>
               </div>
 
-              {/* Phone */}
               <div>
                 <label style={labelStyle}>Phone Number <span style={{ color: '#555', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                   placeholder="+1 (555) 000-0000" style={inputStyle} />
               </div>
 
-              {/* Birthday */}
               <div>
                 <label style={labelStyle}>Birthday <span style={{ color: '#555', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
                 <input type="date" value={birthday} onChange={e => setBirthday(e.target.value)}
                   style={{ ...inputStyle, colorScheme: 'dark' }} />
               </div>
 
-              {/* 12-month goals */}
               <div>
                 <label style={labelStyle}>What are your goals for the next 12 months?</label>
                 <textarea value={goals12} onChange={e => setGoals12(e.target.value)}
@@ -363,7 +464,6 @@ export default function SignupPage() {
                   rows={3} style={{ ...inputStyle, resize: 'vertical', lineHeight: '1.5' }} />
               </div>
 
-              {/* 30-day goals */}
               <div>
                 <label style={labelStyle}>What are your goals for the next 30 days?</label>
                 <textarea value={goals30} onChange={e => setGoals30(e.target.value)}
@@ -371,16 +471,12 @@ export default function SignupPage() {
                   rows={3} style={{ ...inputStyle, resize: 'vertical', lineHeight: '1.5' }} />
               </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                <button type="button" onClick={() => { window.location.href = '/home'; }}
-                  style={{ flex: '0 0 auto', background: 'transparent', color: '#888', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '14px 20px', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
-                  Skip
-                </button>
-                <button type="submit" disabled={loading} className="btn-gold"
-                  style={{ flex: 1, padding: '14px', fontSize: '15px', fontWeight: 800 }}>
-                  {loading ? 'Saving…' : 'Enter the Circle 🏆'}
-                </button>
-              </div>
+              <button type="submit" disabled={loading} className="btn-gold"
+                style={{ width: '100%', padding: '14px', fontSize: '15px', fontWeight: 800, marginTop: 8 }}>
+                {loading
+                  ? (requiresPayment ? 'Redirecting to checkout…' : 'Saving…')
+                  : (requiresPayment ? `Continue to Payment →` : 'Enter the Circle 🏆')}
+              </button>
             </form>
           </div>
         )}
