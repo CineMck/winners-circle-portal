@@ -130,20 +130,26 @@ export async function registerNativePushToken(): Promise<{
   reason?: 'web' | 'denied' | 'error';
   token?: string;
 }> {
+  console.info('[push] registerNativePushToken called, isNative =', isNative());
   if (!isNative()) return { ok: false, reason: 'web' };
 
   const { PushNotifications } = await import('@capacitor/push-notifications');
 
   // 1. Ask for permission (system dialog on first call)
   let perm = await PushNotifications.checkPermissions();
+  console.info('[push] initial permission =', perm.receive);
   if (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') {
+    console.info('[push] requesting permission…');
     perm = await PushNotifications.requestPermissions();
+    console.info('[push] permission after prompt =', perm.receive);
   }
   if (perm.receive !== 'granted') {
+    console.warn('[push] permission not granted; reason =', perm.receive);
     return { ok: false, reason: 'denied' };
   }
 
   // 2. Register with APNs / FCM
+  console.info('[push] permission granted — calling PushNotifications.register()');
   return new Promise((resolve) => {
     let resolved = false;
     const finish = (result: { ok: boolean; reason?: 'error'; token?: string }) => {
@@ -154,6 +160,7 @@ export async function registerNativePushToken(): Promise<{
 
     PushNotifications.addListener('registration', async (tokenData) => {
       const token = tokenData.value;
+      console.info('[push] ✓ registration fired, token length =', token?.length);
       try {
         const platform = getPlatform();
         const res = await fetch('/api/push/register-token', {
@@ -161,26 +168,33 @@ export async function registerNativePushToken(): Promise<{
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token, platform }),
         });
-        if (!res.ok) throw new Error('register failed');
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          throw new Error(`register-token HTTP ${res.status}: ${body}`);
+        }
+        console.info('[push] ✓ token saved on server');
         finish({ ok: true, token });
       } catch (err) {
-        console.error('Failed to persist push token:', err);
+        console.error('[push] ✗ failed to persist push token:', err);
         finish({ ok: false, reason: 'error' });
       }
     });
 
     PushNotifications.addListener('registrationError', (err) => {
-      console.error('Push registration error:', err);
+      console.error('[push] ✗ registrationError event:', err);
       finish({ ok: false, reason: 'error' });
     });
 
     PushNotifications.register().catch((err) => {
-      console.error('Push register call failed:', err);
+      console.error('[push] ✗ register() rejected:', err);
       finish({ ok: false, reason: 'error' });
     });
 
     // Safety timeout — APNs registration occasionally hangs
-    setTimeout(() => finish({ ok: false, reason: 'error' }), 15_000);
+    setTimeout(() => {
+      console.warn('[push] ⏱ 15s timeout — no registration event fired');
+      finish({ ok: false, reason: 'error' });
+    }, 15_000);
   });
 }
 
