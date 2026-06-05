@@ -8,6 +8,14 @@ const config: CapacitorConfig = {
     url: 'https://winners-circle-portal-production.up.railway.app',
     cleartext: false,
   },
+  plugins: {
+    PushNotifications: {
+      // Show banner + play sound + bump badge even when the app is in the
+      // foreground (iOS default is to suppress all of these). Same options
+      // honored by @capacitor/push-notifications on Android too.
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
+  },
 };
 
 export default config;

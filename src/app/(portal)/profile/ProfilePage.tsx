@@ -25,6 +25,50 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
   const avatarRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
+  // Membership controls
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelMessage, setCancelMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const isPaidTier = profile?.tier !== 'free';
+
+  async function openCustomerPortal() {
+    try {
+      const res = await fetch('/api/stripe/portal', { method: 'GET', redirect: 'manual' });
+      // 'manual' so we can capture the Location header from the 303 redirect
+      const location = res.headers.get('location');
+      if (location) {
+        window.location.href = location;
+        return;
+      }
+      // Fall back to following the redirect directly
+      window.location.href = '/api/stripe/portal';
+    } catch {
+      window.location.href = '/api/stripe/portal';
+    }
+  }
+
+  async function confirmCancel() {
+    setCancelLoading(true);
+    setCancelMessage(null);
+    try {
+      const res = await fetch('/api/stripe/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ immediate: false }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCancelMessage({ ok: false, text: data.error || 'Cancel failed' });
+      } else {
+        setCancelMessage({ ok: true, text: data.message || 'Cancellation scheduled.' });
+        setShowCancelConfirm(false);
+      }
+    } catch {
+      setCancelMessage({ ok: false, text: 'Network error — please try again.' });
+    }
+    setCancelLoading(false);
+  }
+
   const tierColor = getTierColor(profile?.tier || 'free');
 
   async function uploadAvatarBlob(blob: Blob, fileName: string) {
@@ -255,19 +299,86 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
       {activeTab === 'settings' && (
         <div className="card" style={{ padding: '24px' }}>
           <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>Membership</h3>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: '#161616', borderRadius: '10px', marginBottom: '16px' }}>
-            <div>
-              <div style={{ fontWeight: 700 }}>{getTierLabel(profile?.tier || 'free')} Plan</div>
-              <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Status: {profile?.subscription_status || 'active'}</div>
+
+          {/* Current plan summary */}
+          <div style={{ padding: '16px', background: '#161616', borderRadius: '10px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+              <div>
+                <div style={{ fontWeight: 700 }}>{getTierLabel(profile?.tier || 'free')} Plan</div>
+                <div style={{ fontSize: '13px', color: 'var(--muted)', marginTop: 2 }}>
+                  Status: {profile?.subscription_status || (isPaidTier ? 'active' : 'free')}
+                </div>
+              </div>
+              <Link href="/upgrade" className="btn-gold" style={{ padding: '8px 16px', fontSize: '13px', whiteSpace: 'nowrap' }}>
+                {isPaidTier ? 'Upgrade Plan' : 'Get a Plan'}
+              </Link>
             </div>
-            <Link href="/upgrade" className="btn-gold" style={{ padding: '8px 20px', fontSize: '13px' }}>
-              {profile?.tier === 'founding' ? 'Manage' : 'Upgrade'}
-            </Link>
           </div>
-          <p style={{ fontSize: '13px', color: 'var(--muted)' }}>
-            To manage billing, cancel, or update your payment method, use the{' '}
-            <Link href="/api/stripe/portal" style={{ color: 'var(--gold)' }}>Stripe Customer Portal</Link>.
-          </p>
+
+          {/* Membership controls — only for paid members */}
+          {isPaidTier && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Modify membership */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: '#0f0f0f', border: '1px solid var(--border)', borderRadius: 10, gap: 12 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>Modify Membership</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>Change plan, switch billing cycle, or update your card.</div>
+                </div>
+                <button
+                  onClick={openCustomerPortal}
+                  style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', padding: '8px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, flexShrink: 0 }}
+                >
+                  Modify
+                </button>
+              </div>
+
+              {/* Cancel membership */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: '#0f0f0f', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10, gap: 12 }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>Cancel Membership</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                    Cancellation takes effect at the end of your current billing period — you keep full access until then.
+                  </div>
+                </div>
+                {showCancelConfirm ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, color: '#ef4444', whiteSpace: 'nowrap' }}>Sure?</span>
+                    <button
+                      onClick={confirmCancel}
+                      disabled={cancelLoading}
+                      style={{ background: '#ef4444', border: 'none', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 12, color: '#fff', fontWeight: 700 }}
+                    >
+                      {cancelLoading ? '…' : 'Yes, Cancel'}
+                    </button>
+                    <button
+                      onClick={() => setShowCancelConfirm(false)}
+                      style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 12, color: 'var(--muted)' }}
+                    >
+                      Keep
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowCancelConfirm(true)}
+                    style={{ background: 'transparent', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', padding: '8px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600, flexShrink: 0 }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+
+              {cancelMessage && (
+                <div style={{
+                  marginTop: 4, padding: '10px 14px', borderRadius: 8, fontSize: 12,
+                  background: cancelMessage.ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                  border: `1px solid ${cancelMessage.ok ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                  color: cancelMessage.ok ? '#22c55e' : '#ef4444',
+                }}>
+                  {cancelMessage.ok ? '✓ ' : '⚠️ '}{cancelMessage.text}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
