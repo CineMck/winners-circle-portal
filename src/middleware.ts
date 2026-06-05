@@ -59,6 +59,11 @@ export async function middleware(request: NextRequest) {
 
   // Protected routes
   if (!user) {
+    // For API routes, return JSON 401 instead of redirecting — otherwise the
+    // browser follows a 307 POST → 405 Method Not Allowed on the /login page.
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
