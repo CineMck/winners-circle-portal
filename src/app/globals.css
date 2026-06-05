@@ -88,6 +88,24 @@ html, body {
   .brand-wordmark { display: none !important; }
 }
 
+/* DM conversation view — keep the message input pinned to the viewport bottom
+   on mobile. Outer container height accounts for topbar, mobile nav, and
+   iOS safe areas. dvh handles mobile-browser URL-bar collapse. */
+.dm-conversation {
+  height: calc(100dvh - var(--topbar-h));
+}
+@media (max-width: 900px) {
+  .dm-conversation {
+    height: calc(
+      100dvh
+      - var(--topbar-h)
+      - var(--mobile-nav-h)
+      - env(safe-area-inset-top, 0px)
+      - env(safe-area-inset-bottom, 0px)
+    );
+  }
+}
+
 /* iOS Capacitor safe-area handling — push fixed elements below the notch
    and above the home indicator. The .has-safe-area class is added to <body>
    by NativePushBootstrap when running inside the native shell.

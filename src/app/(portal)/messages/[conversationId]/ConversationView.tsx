@@ -167,7 +167,7 @@ export default function ConversationView({ conversationId, profile, isGroup, gro
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - var(--topbar-h))', maxWidth: '700px' }}>
+    <div className="dm-conversation" style={{ display: 'flex', flexDirection: 'column', maxWidth: '700px' }}>
       {/* Header */}
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--black-card)', flexShrink: 0 }}>
         <Link href="/messages" style={{ color: 'var(--muted)', textDecoration: 'none', fontSize: '20px', marginRight: '4px' }}>←</Link>

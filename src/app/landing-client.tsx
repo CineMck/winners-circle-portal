@@ -5,7 +5,9 @@
 // the in-app /signup and /login routes instead of external URLs.
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { isNative } from '@/lib/native';
 import './landing.css';
 
 /* ────────────────────────── data ────────────────────────── */
@@ -156,6 +158,17 @@ function MockBrowser({ id, url, active, children }: { id: string; url: string; a
 export default function LandingClient() {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = () => setMenuOpen(false);
+  const router = useRouter();
+  const [hideForNative, setHideForNative] = useState(false);
+
+  // On iOS/Android (Capacitor) we skip the marketing page entirely and send
+  // the user straight to sign-in — the app is for existing members.
+  useEffect(() => {
+    if (isNative()) {
+      setHideForNative(true);
+      router.replace('/login');
+    }
+  }, [router]);
 
   // Lock body scroll while the mobile menu is open
   useEffect(() => {
@@ -304,6 +317,11 @@ export default function LandingClient() {
 
     return () => cleanups.forEach(fn => fn());
   }, []);
+
+  // Avoid a marketing-page flash while the native shell is redirecting to /login.
+  if (hideForNative) {
+    return <div style={{ minHeight: '100vh', background: '#0a0a0a' }} />;
+  }
 
   return (
     <div className="lp">
