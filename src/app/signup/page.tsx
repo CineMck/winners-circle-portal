@@ -139,47 +139,78 @@ export default function SignupPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('profiles').update({
+        const { error: profileErr } = await supabase.from('profiles').update({
           industry: industry || null,
           phone: phone.trim() || null,
           birthday: birthday || null,
           goals_12_months: goals12.trim() || null,
           goals_30_days: goals30.trim() || null,
         }).eq('id', user.id);
+        if (profileErr) {
+          console.error('Profile update error:', profileErr);
+          setError(`Profile save failed: ${profileErr.message}`);
+          setLoading(false);
+          return;
+        }
       }
 
-      // Paid tier → send them to Stripe Checkout. The webhook updates their
-      // tier to 'core' or 'elite' once payment succeeds.
+      // Paid tier → Stripe Checkout. Webhook updates tier on payment success.
       if (requiresPayment) {
         const config = TIER_CONFIGS[selectedTier];
         const priceId = billing === 'monthly'
           ? config.stripe_price_id_monthly
           : config.stripe_price_id_annual;
         if (!priceId) {
-          setError('Stripe price not configured for this tier. Contact support.');
+          setError(`Stripe ${billing} price not configured for ${config.label}. Ask an admin to set NEXT_PUBLIC_STRIPE_${selectedTier.toUpperCase()}_${billing.toUpperCase()}_PRICE_ID on Railway.`);
           setLoading(false);
           return;
         }
-        const res = await fetch('/api/stripe/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ priceId }),
-        });
-        const { url } = await res.json();
-        if (url) {
-          window.location.href = url;
-          return; // Don't show "done" — Stripe will redirect back on success
+
+        let res: Response;
+        try {
+          res = await fetch('/api/stripe/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ priceId }),
+          });
+        } catch (netErr) {
+          console.error('Checkout network error:', netErr);
+          setError('Network error reaching checkout. Check your connection.');
+          setLoading(false);
+          return;
         }
-        setError('Could not start checkout. Please try again.');
+
+        const text = await res.text();
+        let data: { url?: string; error?: string } = {};
+        try { data = JSON.parse(text); } catch {
+          console.error('Checkout returned non-JSON:', text);
+          setError(`Checkout failed (HTTP ${res.status}). Server response: ${text.slice(0, 200)}`);
+          setLoading(false);
+          return;
+        }
+
+        if (!res.ok || data.error) {
+          console.error('Checkout API error:', data);
+          setError(data.error || `Checkout failed (HTTP ${res.status})`);
+          setLoading(false);
+          return;
+        }
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+        setError('Checkout returned no URL. Contact support.');
         setLoading(false);
         return;
       }
 
-      // Free tier → straight into the portal
+      // Free tier → straight to the portal
       setStage('done');
       setTimeout(() => { window.location.href = '/home'; }, 1500);
-    } catch {
-      setError('Something went wrong. Please try again.');
+    } catch (err) {
+      console.error('handleProfile unexpected error:', err);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Something went wrong: ${msg}`);
       setLoading(false);
     }
   }
