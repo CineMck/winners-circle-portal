@@ -1,5 +1,6 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
@@ -12,6 +13,17 @@ export default function LoginPage() {
   const [magicSent, setMagicSent] = useState(false);
 
   const supabase = createClient();
+  const searchParams = useSearchParams();
+
+  // Surface any error reason from /auth/callback redirects
+  useEffect(() => {
+    const errParam = searchParams.get('error');
+    const reason = searchParams.get('reason');
+    if (errParam) {
+      const decoded = reason ? decodeURIComponent(reason) : 'Authentication failed';
+      setError(`${errParam === 'auth_callback_failed' ? 'Sign-in link issue' : errParam}: ${decoded}`);
+    }
+  }, [searchParams]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
