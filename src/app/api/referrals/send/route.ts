@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit';
 
 /**
  * POST /api/referrals/send
@@ -93,6 +94,9 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const rl = rateLimit(`referral:${user.id}`, 20, 60 * 60_000); // 20 per hour
+    if (!rl.ok) return tooManyRequests(rl.retryAfter);
 
     const { email, personalNote } = await req.json();
     const cleanEmail = String(email || '').trim().toLowerCase();

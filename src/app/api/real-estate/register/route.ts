@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { rateLimit, clientIp, tooManyRequests } from '@/lib/rateLimit';
 
 /**
  * POST /api/real-estate/register
@@ -32,6 +33,10 @@ function escapeHtml(s: string) {
 }
 
 export async function POST(req: NextRequest) {
+  // Public endpoint — throttle by IP to limit spam registrations.
+  const rl = rateLimit(`re-register:${clientIp(req)}`, 5, 10 * 60_000); // 5 per 10 min
+  if (!rl.ok) return tooManyRequests(rl.retryAfter);
+
   const body = await req.json().catch(() => null);
   if (!body) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
