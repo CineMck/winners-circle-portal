@@ -480,28 +480,42 @@ export default function RealEstateClient() {
               padding: '32px 26px', textAlign: 'center',
             }}
           >
-            <div className="section-eyebrow" style={{ justifyContent: 'center' }}>Ready to go all in?</div>
-            <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', margin: '6px 0 10px' }}>
-              Become a <span className="gold">member</span>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(255,77,77,0.14)', border: '1px solid rgba(255,77,77,0.5)',
+              color: '#ff6b6b', fontWeight: 800, fontSize: 12, letterSpacing: '0.08em',
+              textTransform: 'uppercase', padding: '6px 14px', borderRadius: 999, marginBottom: 14,
+            }}>
+              🔥 Limited Promo · 50% Off
+            </div>
+            <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', margin: '4px 0 12px', lineHeight: 1.2 }}>
+              Save <span className="gold">50%</span> on 4 Months of The Winners Circle!
             </h2>
-            <p style={{ color: 'rgba(255,255,255,0.7)', maxWidth: 440, margin: '0 auto 20px', lineHeight: 1.6 }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', maxWidth: 440, margin: '0 auto 22px', lineHeight: 1.6 }}>
               Full access to the community, courses, challenges, and live events.
             </p>
-            <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 22 }}>
-              <div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--gold)' }}>$300</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>first 4 months</div>
-              </div>
-              <div style={{ alignSelf: 'center', color: 'rgba(255,255,255,0.35)' }}>then</div>
-              <div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--gold)' }}>$150<span style={{ fontSize: 14 }}>/mo</span></div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>ongoing</div>
-              </div>
+
+            {/* Price-cut badge: $600 → $300 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 6 }}>
+              <span style={{
+                fontSize: 30, fontWeight: 700, color: 'rgba(255,255,255,0.45)',
+                textDecoration: 'line-through', textDecorationColor: '#ff4d4d', textDecorationThickness: 3,
+              }}>$600</span>
+              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 22 }}>→</span>
+              <span style={{ fontSize: 44, fontWeight: 900, color: 'var(--gold)', lineHeight: 1 }}>$300</span>
+              <span style={{
+                background: '#ff4d4d', color: '#fff', fontWeight: 800, fontSize: 12,
+                padding: '4px 10px', borderRadius: 8, letterSpacing: '0.04em',
+              }}>SAVE 50%</span>
             </div>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: '0 0 4px' }}>for your first 4 months</p>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 22 }}>
+              then <strong style={{ color: 'var(--gold)' }}>$150/mo</strong> ongoing
+            </p>
             <Link href="/real-estate/join" className="btn-primary" style={{ display: 'inline-flex' }}>
               Become a Member <Arrow />
             </Link>
-            <p className="form-reassure" style={{ marginTop: 14 }}>$300 today covers your first 4 months · Cancel anytime</p>
+            <p className="form-reassure" style={{ marginTop: 14 }}>$300 today (normally $600) · covers your first 4 months · Cancel anytime</p>
           </div>
         </div>
       </section>
