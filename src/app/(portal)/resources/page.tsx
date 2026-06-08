@@ -2,6 +2,10 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import ResourcesPage from './ResourcesPage';
 
+// Auth-gated, reads cookies per request — never statically prerender.
+// (The try/catch below would otherwise swallow Next's dynamic-render signal.)
+export const dynamic = 'force-dynamic';
+
 export default async function Resources() {
   try {
     const supabase = await createClient();

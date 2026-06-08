@@ -1,11 +1,11 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -149,5 +149,15 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary during prerender,
+// otherwise the build bails out (missing-suspense-with-csr-bailout).
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

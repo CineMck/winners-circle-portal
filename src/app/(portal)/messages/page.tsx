@@ -3,6 +3,10 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
 import MessagesInbox from './MessagesInbox';
 
+// Auth-gated, reads cookies per request — never statically prerender.
+// (The try/catch below would otherwise swallow Next's dynamic-render signal.)
+export const dynamic = 'force-dynamic';
+
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
