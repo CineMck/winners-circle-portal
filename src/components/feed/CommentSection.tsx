@@ -3,15 +3,20 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Comment, Profile } from '@/types';
 import { formatDate, getTierColor, getInitials } from '@/lib/utils';
+import MentionInput, { ResolvedMentions } from './MentionInput';
+import { renderMentions } from '@/lib/renderMentions';
 
 interface Props {
   postId: string;
   currentUser: Profile;
 }
 
+const NO_MENTIONS: ResolvedMentions = { userIds: [], groups: [] };
+
 export default function CommentSection({ postId, currentUser }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [mentions, setMentions] = useState<ResolvedMentions>(NO_MENTIONS);
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
 
@@ -29,13 +34,25 @@ export default function CommentSection({ postId, currentUser }: Props) {
     e.preventDefault();
     if (!newComment.trim()) return;
     setLoading(true);
+    const content = newComment.trim();
     const { data } = await supabase
       .from('comments')
-      .insert({ post_id: postId, author_id: currentUser.id, content: newComment.trim() })
+      .insert({ post_id: postId, author_id: currentUser.id, content })
       .select('*, author:profiles!author_id(*)')
       .single();
     if (data) setComments(prev => [...prev, data as Comment]);
+
+    // Notify tagged users (server creates the notifications + push).
+    if (mentions.userIds.length > 0) {
+      fetch('/api/notify/mention', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: 'comment', postId, userIds: mentions.userIds, preview: content }),
+      }).catch(() => {});
+    }
+
     setNewComment('');
+    setMentions(NO_MENTIONS);
     setLoading(false);
   }
 
@@ -76,7 +93,7 @@ export default function CommentSection({ postId, currentUser }: Props) {
                   }}>Remove</button>
                 )}
               </div>
-              <p style={{ fontSize: '13px', color: 'var(--text)', lineHeight: 1.5 }}>{comment.content}</p>
+              <p style={{ fontSize: '13px', color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{renderMentions(comment.content)}</p>
             </div>
           </div>
         );
@@ -89,13 +106,15 @@ export default function CommentSection({ postId, currentUser }: Props) {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '11px', fontWeight: 700, color: getTierColor(currentUser?.tier || 'free'),
         }}>{getInitials(currentUser?.full_name || 'U')}</div>
-        <input
-          value={newComment} onChange={e => setNewComment(e.target.value)}
-          placeholder="Write a comment…"
-          style={{
-            flex: 1, background: '#161616', border: '1px solid var(--border)',
+        <MentionInput
+          value={newComment}
+          onChange={(text, m) => { setNewComment(text); setMentions(m); }}
+          dropUp
+          placeholder="Write a comment… use @ to tag someone"
+          inputStyle={{
+            width: '100%', background: '#161616', border: '1px solid var(--border)',
             borderRadius: '20px', padding: '7px 14px', color: 'var(--text)',
-            fontSize: '13px', outline: 'none',
+            fontSize: '13px', outline: 'none', fontFamily: 'inherit',
           }}
         />
         <button type="submit" disabled={loading || !newComment.trim()} style={{

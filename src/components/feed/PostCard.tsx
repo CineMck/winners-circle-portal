@@ -5,6 +5,7 @@ import { Post, Profile } from '@/types';
 import { formatDate, getTierColor, getTierLabel, getInitials } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
 import { isMuxUrl, muxPlaybackId } from '@/lib/muxPlayback';
+import { renderMentions } from '@/lib/renderMentions';
 import Link from 'next/link';
 import CommentSection from './CommentSection';
 
@@ -176,7 +177,7 @@ export default function PostCard({ post, currentUser, onPin, onRemove }: Props) 
 
       {/* Content */}
       <p style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text)', whiteSpace: 'pre-wrap', marginBottom: '12px' }}>
-        {post.content}
+        {renderMentions(post.content)}
       </p>
 
       {/* Media */}

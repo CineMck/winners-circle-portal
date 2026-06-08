@@ -5,6 +5,7 @@ import { Profile, getTierColor, getInitials } from '@/types';
 import { uploadToStorage } from '@/lib/upload';
 import { uploadVideoToMux } from '@/lib/muxUpload';
 import { generateVideoThumbnails, VideoThumb } from '@/lib/videoThumbnails';
+import MentionInput, { ResolvedMentions } from './MentionInput';
 
 interface Props {
   currentUser: Profile;
@@ -29,6 +30,7 @@ interface MediaItem {
 
 export default function PostComposer({ currentUser, channelId, challengeId, placeholder, allowNoChannel, onPostCreated }: Props) {
   const [content, setContent] = useState('');
+  const [mentions, setMentions] = useState<ResolvedMentions>({ userIds: [], groups: [] });
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
@@ -39,6 +41,7 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
   const supabase = createClient();
 
   const tierColor = getTierColor(currentUser?.tier || 'free');
+  const isStaff = ['admin', 'moderator'].includes(currentUser?.role);
 
   function updateItem(index: number, patch: Partial<MediaItem>) {
     setItems(prev => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
@@ -217,7 +220,18 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
       setPostError(error.message);
       return;
     }
+    // Notify tagged users / groups (server creates the notifications + push).
+    if (data && (mentions.userIds.length > 0 || mentions.groups.length > 0)) {
+      const postId = (data as { id: string }).id;
+      fetch('/api/notify/mention', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: 'post', postId, userIds: mentions.userIds, groups: mentions.groups, preview: content.trim() }),
+      }).catch(() => {});
+    }
+
     setContent('');
+    setMentions({ userIds: [], groups: [] });
     setItems([]);
     if (data) onPostCreated?.(data);
   }
@@ -232,11 +246,16 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
           fontSize: '14px', fontWeight: 700, color: tierColor,
         }}>{getInitials(currentUser?.full_name || 'U')}</div>
         <form onSubmit={handleSubmit} style={{ flex: 1 }}>
-          <textarea
-            value={content} onChange={e => setContent(e.target.value)}
-            placeholder={placeholder || "Share something with the community…"}
+          <MentionInput
+            value={content}
+            onChange={(text, m) => { setContent(text); setMentions(m); }}
+            multiline
             rows={3}
-            style={{
+            allowGroups={isStaff}
+            placeholder={placeholder || (isStaff
+              ? "Share an update… use @ to tag members, a tier, or @everyone"
+              : "Share something with the community… use @ to tag someone")}
+            inputStyle={{
               width: '100%', background: '#161616', border: '1px solid var(--border)',
               borderRadius: '12px', padding: '12px', color: 'var(--text)',
               fontSize: '14px', outline: 'none', resize: 'vertical', fontFamily: 'inherit',

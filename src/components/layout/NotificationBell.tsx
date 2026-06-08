@@ -84,17 +84,26 @@ export default function NotificationBell({ userId }: { userId: string }) {
               <div style={{ padding: '32px', textAlign: 'center', color: 'var(--muted)', fontSize: '14px' }}>
                 No notifications yet
               </div>
-            ) : notifications.map(notif => (
-              <div key={notif.id} style={{
-                padding: '12px 16px',
+            ) : notifications.map(notif => {
+              const boxStyle: React.CSSProperties = {
+                display: 'block', padding: '12px 16px',
                 background: notif.is_read ? 'transparent' : 'var(--gold-dim)',
                 borderBottom: '1px solid var(--border-subtle, #161616)',
-              }}>
-                <div style={{ fontSize: '13px', fontWeight: notif.is_read ? 400 : 600 }}>{notif.title}</div>
-                <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>{notif.body}</div>
-                <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>{formatDate(notif.created_at)}</div>
-              </div>
-            ))}
+                color: 'inherit', textDecoration: 'none',
+              };
+              const inner = (
+                <>
+                  <div style={{ fontSize: '13px', fontWeight: notif.is_read ? 400 : 600 }}>{notif.title}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '2px' }}>{notif.body}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '4px' }}>{formatDate(notif.created_at)}</div>
+                </>
+              );
+              return notif.link ? (
+                <Link key={notif.id} href={notif.link} onClick={() => setOpen(false)} style={boxStyle}>{inner}</Link>
+              ) : (
+                <div key={notif.id} style={boxStyle}>{inner}</div>
+              );
+            })}
           </div>
         </div>
       )}
