@@ -10,8 +10,9 @@ const supabaseAdmin = createClient(
 
 const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_TYPES = [
-  'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+  'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/heic',
   'video/mp4', 'video/quicktime', 'video/mov', 'video/mpeg', 'video/webm',
+  'application/pdf',
 ];
 
 export async function POST(req: NextRequest) {
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
       .upload(path, buffer, {
         contentType: file.type,
         upsert: true,
+        cacheControl: '31536000',
       });
 
     if (error) {

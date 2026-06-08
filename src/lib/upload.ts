@@ -26,7 +26,7 @@ const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
 export async function uploadToStorage(opts: {
   file: Blob;
   fileName: string;
-  folder: 'posts' | 'avatars' | 'resources' | 'messages';
+  folder: 'posts' | 'avatars' | 'resources' | 'messages' | 'courses';
   userId: string;
 }): Promise<UploadResult> {
   const { file, fileName, folder, userId } = opts;

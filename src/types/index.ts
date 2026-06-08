@@ -47,6 +47,9 @@ export interface Post {
   author_id: string;
   content: string;
   media_urls: string[];
+  // Parallel to media_urls by index: poster image URL for each video entry
+  // (empty string for images / videos without a generated thumbnail).
+  media_thumbnails?: string[];
   is_pinned: boolean;
   is_removed: boolean;
   removed_reason: string | null;

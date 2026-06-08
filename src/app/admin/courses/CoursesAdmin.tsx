@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { uploadToStorage } from '@/lib/upload';
 
 interface Lesson {
   id: string;
@@ -62,14 +63,17 @@ export default function CoursesAdmin({ courses: initial, adminId }: { courses: C
   const lessonVideoRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // ── Upload helper ──────────────────────────────────────────
-  async function uploadFile(file: File, folder: string, userId: string): Promise<string | null> {
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('folder', folder);
-    fd.append('userId', userId);
-    const res = await fetch('/api/upload', { method: 'POST', body: fd });
-    const json = await res.json();
-    return json.url || null;
+  // Direct-to-storage upload (no /api/upload proxy) so large course videos
+  // don't get buffered into the server's memory or hit Railway timeouts.
+  // RLS path layout is courses/<adminId>/<file>, so userId must be the admin's uid.
+  async function uploadFile(file: File, userId: string): Promise<string | null> {
+    try {
+      const { url } = await uploadToStorage({ file, fileName: file.name, folder: 'courses', userId });
+      return url;
+    } catch (err) {
+      console.error('Course upload failed:', err);
+      return null;
+    }
   }
 
   // ── Create course ──────────────────────────────────────────
@@ -112,7 +116,7 @@ export default function CoursesAdmin({ courses: initial, adminId }: { courses: C
   // ── Upload thumbnail ───────────────────────────────────────
   async function handleThumbnail(courseId: string, file: File) {
     setUploading(`thumb-${courseId}`);
-    const url = await uploadFile(file, 'courses/thumbnails', adminId);
+    const url = await uploadFile(file, adminId);
     if (url) {
       await supabase.from('courses').update({ thumbnail_url: url }).eq('id', courseId);
       setCourses(prev => prev.map(c => c.id === courseId ? { ...c, thumbnail_url: url } : c));
@@ -123,7 +127,7 @@ export default function CoursesAdmin({ courses: initial, adminId }: { courses: C
   // ── Upload intro video ─────────────────────────────────────
   async function handleIntroVideo(courseId: string, file: File) {
     setUploading(`intro-${courseId}`);
-    const url = await uploadFile(file, 'courses/videos', adminId);
+    const url = await uploadFile(file, adminId);
     if (url) {
       await supabase.from('courses').update({ intro_video_url: url }).eq('id', courseId);
       setCourses(prev => prev.map(c => c.id === courseId ? { ...c, intro_video_url: url } : c));
@@ -179,7 +183,7 @@ export default function CoursesAdmin({ courses: initial, adminId }: { courses: C
   // ── Upload lesson video ────────────────────────────────────
   async function handleLessonVideo(courseId: string, lessonId: string, file: File) {
     setUploading(`lesson-${lessonId}`);
-    const url = await uploadFile(file, 'courses/videos', adminId);
+    const url = await uploadFile(file, adminId);
     if (url) {
       await supabase.from('course_lessons').update({ video_url: url }).eq('id', lessonId);
       setCourses(prev => prev.map(c =>

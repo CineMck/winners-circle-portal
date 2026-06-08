@@ -149,9 +149,11 @@ export default function PostCard({ post, currentUser, onPin, onRemove }: Props) 
         }}>
           {post.media_urls.map((url, i) => (
             url.match(/\.(mp4|webm|mov)/i) ? (
-              // Videos: natural aspect ratio, centred, max 80vh tall so landscape vids don't overflow
+              // Videos: natural aspect ratio, centred, max 80vh tall so landscape vids don't overflow.
+              // preload="none" + poster keeps the feed light — no video bytes load until play.
               <video
-                key={i} src={url} controls
+                key={i} src={url} controls preload="none"
+                poster={post.media_thumbnails?.[i] || undefined}
                 style={{ width: '100%', maxHeight: '80vh', borderRadius: '8px', display: 'block', background: '#000' }}
               />
             ) : (
