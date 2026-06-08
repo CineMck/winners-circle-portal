@@ -100,10 +100,7 @@ const FAQS = [
   },
 ];
 
-const CALL_DATES = [
-  { value: '2026-06-17', dow: 'Wednesday', main: 'June 17', time: '12:00pm ET · 60 min' },
-  { value: '2026-06-30', dow: 'Tuesday', main: 'June 30', time: '12:00pm ET · 60 min' },
-];
+interface CallSession { id: string; label: string; starts_at: string }
 
 function Arrow({ size = 15 }: { size?: number }) {
   return (
@@ -113,7 +110,7 @@ function Arrow({ size = 15 }: { size?: number }) {
   );
 }
 
-export default function RealEstateClient() {
+export default function RealEstateClient({ sessions = [] }: { sessions?: CallSession[] }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [countdown, setCountdown] = useState('starts soon');
   const [submitting, setSubmitting] = useState(false);
@@ -187,7 +184,7 @@ export default function RealEstateClient() {
       email: String(fd.get('email') || '').trim(),
       phone: String(fd.get('phone') || '').trim(),
       brokerage: String(fd.get('brokerage') || '').trim(),
-      callDate: String(fd.get('callDate') || ''),
+      sessionId: String(fd.get('sessionId') || ''),
       problem: String(fd.get('problem') || '').trim(),
     };
     setSubmitting(true);
@@ -441,17 +438,25 @@ export default function RealEstateClient() {
                   </div>
                   <div className="date-picker" role="radiogroup" aria-labelledby="dateLabel">
                     <span className="date-label" id="dateLabel">Which call do you want to join?</span>
-                    <div className="date-options">
-                      {CALL_DATES.map(d => (
-                        <label className="date-card" key={d.value}>
-                          <input type="radio" name="callDate" value={d.value} required />
-                          <span className="date-day-of-week">{d.dow}</span>
-                          <span className="date-main">{d.main}</span>
-                          <span className="date-time">{d.time}</span>
-                          <span className="date-check" aria-hidden="true" />
-                        </label>
-                      ))}
-                    </div>
+                    {sessions.length === 0 ? (
+                      <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: '4px 0 0' }}>
+                        New call dates are being scheduled — check back soon, or reach out and we&apos;ll let you know.
+                      </p>
+                    ) : (
+                      <div className="date-options">
+                        {sessions.map((s, i) => {
+                          const parts = s.label.split('·');
+                          return (
+                            <label className="date-card" key={s.id}>
+                              <input type="radio" name="sessionId" value={s.id} required defaultChecked={sessions.length === 1 || i === 0 ? false : undefined} />
+                              <span className="date-main">{parts[0].trim()}</span>
+                              {parts[1] && <span className="date-time">{parts[1].trim()}</span>}
+                              <span className="date-check" aria-hidden="true" />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                   <div className="form-field full">
                     <label htmlFor="problem">What&apos;s the #1 thing you want John to help you solve?</label>

@@ -14,6 +14,7 @@ export default async function EmailMarketingPage() {
     { count: coreCount },
     { count: eliteCount },
     { count: foundingCount },
+    { count: registrationsCount },
     { data: campaigns },
     { data: templates },
   ] = await Promise.all([
@@ -22,6 +23,7 @@ export default async function EmailMarketingPage() {
     supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('tier', 'core'),
     supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('tier', 'elite'),
     supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('tier', 'founding'),
+    supabaseAdmin.from('re_mastermind_registrations').select('*', { count: 'exact', head: true }).eq('unsubscribed', false),
     supabaseAdmin.from('email_campaigns').select('id,name,subject,tier,status,sent_at,recipient_count,created_at').order('created_at', { ascending: false }),
     supabaseAdmin.from('email_templates').select('id,name,description,blocks,created_at').order('created_at', { ascending: false }),
   ]);
@@ -32,6 +34,7 @@ export default async function EmailMarketingPage() {
     core: coreCount || 0,
     elite: eliteCount || 0,
     founding: foundingCount || 0,
+    registrations: registrationsCount || 0,
   };
 
   return (

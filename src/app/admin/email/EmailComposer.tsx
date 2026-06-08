@@ -7,14 +7,15 @@ import {
   BLOCK_TYPES, BLOCK_COLORS, BLOCK_ICONS, makeBlock, blocksToHtml,
 } from '@/lib/email/blocks';
 
-interface TierCounts { all: number; paid: number; core: number; elite: number; founding: number }
+interface TierCounts { all: number; paid: number; core: number; elite: number; founding: number; registrations: number }
 
 const TIER_OPTIONS = [
-  { value: 'all',      label: 'All Members',     color: '#888' },
-  { value: 'paid',     label: 'All Paid',         color: '#c9a84c' },
-  { value: 'core',     label: 'Core',             color: '#c9a84c' },
-  { value: 'elite',    label: 'Elite',            color: '#e0c068' },
-  { value: 'founding', label: 'Founding',         color: '#ffd700' },
+  { value: 'all',           label: 'All Members',      color: '#888' },
+  { value: 'paid',          label: 'All Paid',          color: '#c9a84c' },
+  { value: 'core',          label: 'Core',              color: '#c9a84c' },
+  { value: 'elite',         label: 'Elite',             color: '#e0c068' },
+  { value: 'founding',      label: 'Founding',          color: '#ffd700' },
+  { value: 'registrations', label: 'RE RSVP List',      color: '#7aa5d9' },
 ];
 
 interface Props {

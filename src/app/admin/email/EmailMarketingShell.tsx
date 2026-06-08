@@ -5,7 +5,7 @@ import EmailComposer from './EmailComposer';
 import CampaignHistory from './CampaignHistory';
 import TemplateLibrary from './TemplateLibrary';
 
-interface TierCounts { all: number; paid: number; core: number; elite: number; founding: number }
+interface TierCounts { all: number; paid: number; core: number; elite: number; founding: number; registrations: number }
 
 export interface Campaign {
   id: string;

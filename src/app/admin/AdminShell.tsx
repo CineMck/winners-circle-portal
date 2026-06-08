@@ -16,6 +16,8 @@ const ADMIN_NAV = [
   { href: '/admin/progress', label: 'Progress', icon: '📈' },
   { href: '/admin/agent', label: 'AI Agent', icon: '🤖' },
   { href: '/admin/email', label: 'Email Marketing', icon: '✉️' },
+  { href: '/admin/leads', label: 'RE Marketing List', icon: '🏠' },
+  { href: '/admin/call-sessions', label: 'Call Sessions', icon: '📞' },
   { href: '/admin/new-members', label: 'Paid Members', icon: '🌟' },
   { href: '/admin/moderation', label: 'Moderation Log', icon: '🛡️' },
 ];

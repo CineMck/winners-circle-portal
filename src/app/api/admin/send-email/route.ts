@@ -39,31 +39,50 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch recipient emails
-    let query = supabaseAdmin.from('profiles').select('email, full_name');
-    if (tier === 'paid') {
-      query = query.in('tier', ['core', 'elite', 'founding']);
-    } else if (tier !== 'all') {
-      query = query.eq('tier', tier);
-    }
-    const { data: members, error: membersErr } = await query;
-    if (membersErr) return NextResponse.json({ error: membersErr.message }, { status: 500 });
-    if (!members || members.length === 0) {
-      return NextResponse.json({ error: 'No recipients found for that filter' }, { status: 400 });
-    }
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://winners-circle.up.railway.app';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://winnerscircleportal.com';
+    const fromAddr = `John Wentworth <${process.env.RESEND_FROM_EMAIL || 'noreply@wentworthre.com'}>`;
 
     // Build styled email HTML — use shared blocks library if blocks provided
     const bodyHtml = blocks && blocks.length > 0 ? blocksToHtml(blocks) : htmlBody;
     const fullHtml = wrapInEmailTemplate(subject, bodyHtml, appUrl);
 
-    // Send in batches of 50 (Resend batch limit)
-    const emails = members.map(m => ({
-      from: `John Wentworth <${process.env.RESEND_FROM_EMAIL || 'noreply@wentworthre.com'}>`,
-      to: m.email,
-      subject,
-      html: fullHtml,
-    }));
+    const unsubFooter = (token: string) =>
+      `<div style="max-width:560px;margin:8px auto 0;text-align:center;color:#888;font-size:11px;line-height:1.6;font-family:sans-serif;">The Winners Circle · You're receiving this because you registered for a Real Estate Mastermind call.<br/><a href="${appUrl}/unsubscribe?token=${token}" style="color:#888;text-decoration:underline;">Unsubscribe</a></div>`;
+
+    type OutEmail = { from: string; to: string; subject: string; html: string };
+    let emails: OutEmail[] = [];
+
+    if (tier === 'registrations') {
+      // Real Estate RSVP marketing list — exclude unsubscribed, dedupe by email,
+      // and append a compliant unsubscribe footer (per-recipient token).
+      const { data: regs, error: regErr } = await supabaseAdmin
+        .from('re_mastermind_registrations')
+        .select('email, unsubscribe_token')
+        .eq('unsubscribed', false);
+      if (regErr) return NextResponse.json({ error: regErr.message }, { status: 500 });
+      const seen = new Map<string, string>();
+      for (const r of regs || []) {
+        const e = String(r.email || '').toLowerCase();
+        if (e && !seen.has(e)) seen.set(e, r.unsubscribe_token as string);
+      }
+      if (seen.size === 0) return NextResponse.json({ error: 'No subscribed registrations found' }, { status: 400 });
+      emails = [...seen.entries()].map(([email, token]) => ({
+        from: fromAddr, to: email, subject, html: fullHtml + unsubFooter(token),
+      }));
+    } else {
+      let query = supabaseAdmin.from('profiles').select('email, full_name');
+      if (tier === 'paid') {
+        query = query.in('tier', ['core', 'elite', 'founding']);
+      } else if (tier !== 'all') {
+        query = query.eq('tier', tier);
+      }
+      const { data: members, error: membersErr } = await query;
+      if (membersErr) return NextResponse.json({ error: membersErr.message }, { status: 500 });
+      if (!members || members.length === 0) {
+        return NextResponse.json({ error: 'No recipients found for that filter' }, { status: 400 });
+      }
+      emails = members.map(m => ({ from: fromAddr, to: m.email as string, subject, html: fullHtml }));
+    }
 
     let sent = 0;
     const batchSize = 50;

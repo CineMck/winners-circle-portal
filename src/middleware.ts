@@ -46,15 +46,19 @@ export async function middleware(request: NextRequest) {
     '/terms',
     '/real-estate',
     '/api/real-estate/register',
+    '/unsubscribe',
+    '/api/unsubscribe',
     // Server-to-server webhook + cron endpoints (validate themselves via signature/secret)
     '/api/webhooks/',
     '/api/push/webhook',
     '/api/push/event-reminders',
+    '/api/real-estate/reminders',
   ];
   // Routes a signed-in user is still allowed to hit (don't bounce them to /home).
   const allowLoggedIn = [
     '/auth/reset', '/privacy', '/terms', '/real-estate', '/api/real-estate/register',
-    '/api/webhooks/', '/api/push/webhook', '/api/push/event-reminders',
+    '/unsubscribe', '/api/unsubscribe',
+    '/api/webhooks/', '/api/push/webhook', '/api/push/event-reminders', '/api/real-estate/reminders',
   ];
   if (pathname === '/' || publicRoutes.some(r => pathname.startsWith(r))) {
     if (user && !allowLoggedIn.some(r => pathname.startsWith(r)) && pathname !== '/') {

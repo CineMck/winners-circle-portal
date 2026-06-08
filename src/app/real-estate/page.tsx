@@ -1,5 +1,10 @@
 import type { Metadata } from 'next';
 import RealEstateClient from './real-estate-client';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { formatCallTime } from '@/lib/reMarketing';
+
+// Re-check sessions periodically (admins add/edit calls in the admin panel).
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: 'The Winners Circle — Elevate Real Estate Free Mastermind',
@@ -27,6 +32,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RealEstatePage() {
-  return <RealEstateClient />;
+export default async function RealEstatePage() {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from('re_call_sessions')
+    .select('id, label, starts_at')
+    .eq('is_active', true)
+    .gte('starts_at', new Date().toISOString())
+    .order('starts_at', { ascending: true });
+
+  const sessions = (data || []).map((s) => ({
+    id: s.id,
+    label: s.label || formatCallTime(s.starts_at),
+    starts_at: s.starts_at as string,
+  }));
+
+  return <RealEstateClient sessions={sessions} />;
 }
