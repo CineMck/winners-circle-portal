@@ -34,7 +34,8 @@ export function getTierColor(tier: MemberTier): string {
     core: '#c9a84c',
     elite: '#e0c068',
     founding: '#ffd700',
-    re_promo: '#7aa5d9',
+    // Real Estate Promo members appear identical to Core members.
+    re_promo: '#c9a84c',
   };
   return colors[tier] || '#888888';
 }
@@ -45,7 +46,8 @@ export function getTierLabel(tier: MemberTier): string {
     core: 'Core',
     elite: 'Elevate',
     founding: '1-1 Elite',
-    re_promo: 'RE Promo',
+    // Real Estate Promo members appear identical to Core members.
+    re_promo: 'Core',
   };
   return labels[tier] || tier;
 }

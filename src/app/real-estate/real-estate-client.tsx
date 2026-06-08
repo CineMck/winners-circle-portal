@@ -469,6 +469,40 @@ export default function RealEstateClient() {
               </>
             )}
           </div>
+
+          {/* ── Promo membership CTA (below the free call signup) ── */}
+          <div
+            className="reveal"
+            style={{
+              maxWidth: 620, margin: '28px auto 0',
+              background: 'linear-gradient(180deg,#141414,#0e0e0e)',
+              border: '1px solid rgba(201,168,76,0.35)', borderRadius: 18,
+              padding: '32px 26px', textAlign: 'center',
+            }}
+          >
+            <div className="section-eyebrow" style={{ justifyContent: 'center' }}>Ready to go all in?</div>
+            <h2 style={{ fontSize: 'clamp(22px,4vw,32px)', margin: '6px 0 10px' }}>
+              Become a <span className="gold">member</span>
+            </h2>
+            <p style={{ color: 'rgba(255,255,255,0.7)', maxWidth: 440, margin: '0 auto 20px', lineHeight: 1.6 }}>
+              Full access to the community, courses, challenges, and live events.
+            </p>
+            <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 22 }}>
+              <div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--gold)' }}>$300</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>first 4 months</div>
+              </div>
+              <div style={{ alignSelf: 'center', color: 'rgba(255,255,255,0.35)' }}>then</div>
+              <div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--gold)' }}>$150<span style={{ fontSize: 14 }}>/mo</span></div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>ongoing</div>
+              </div>
+            </div>
+            <Link href="/real-estate/join" className="btn-primary" style={{ display: 'inline-flex' }}>
+              Become a Member <Arrow />
+            </Link>
+            <p className="form-reassure" style={{ marginTop: 14 }}>$300 today covers your first 4 months · Cancel anytime</p>
+          </div>
         </div>
       </section>
 

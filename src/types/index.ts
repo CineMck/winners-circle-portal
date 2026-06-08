@@ -247,8 +247,8 @@ export function canAccessTier(userTier: MemberTier, requiredTier: MemberTier): b
   // Real Estate Promo content: promo members only (plus 1-1 Elite, so John
   // and top-tier members can still see/join those sessions).
   if (requiredTier === 're_promo') return userTier === 're_promo' || userTier === 'founding';
-  // A promo member ranks like a free member for everything else.
-  const userRank = userTier === 're_promo' ? 0 : TIER_ORDER.indexOf(userTier);
+  // A promo member has the same access level as Core for everything else.
+  const userRank = userTier === 're_promo' ? TIER_ORDER.indexOf('core') : TIER_ORDER.indexOf(userTier);
   return userRank >= TIER_ORDER.indexOf(requiredTier);
 }
 
@@ -280,7 +280,8 @@ export const ACCESS_GROUP_OPTIONS: { value: AccessGroup; label: string; hint: st
 export function canAccessGroup(userTier: MemberTier, group: AccessGroup): boolean {
   switch (group) {
     case 'all':        return true;
-    case 'paid':       return userTier !== 'free' && userTier !== 're_promo';
+    // re_promo is a paying tier and gets the same access as Core.
+    case 'paid':       return userTier !== 'free';
     case 'elevate':    return userTier === 'elite' || userTier === 'founding';
     case 'one_on_one': return userTier === 'founding';
     default:           return false;
