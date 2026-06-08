@@ -7,11 +7,20 @@ import { NextResponse } from 'next/server';
  * (legacy OTP verify flow).
  */
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const url = new URL(request.url);
+  const { searchParams } = url;
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/home';
   const tokenHash = searchParams.get('token_hash');
   const type = searchParams.get('type');
+
+  // Behind Railway's proxy, `url.origin` is the container's INTERNAL address
+  // (e.g. http://localhost:8080), so redirecting to it bounces users to
+  // localhost. Use the forwarded host/proto to rebuild the PUBLIC origin the
+  // user actually came from (custom domain or the railway.app domain).
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto') ?? 'https';
+  const origin = forwardedHost ? `${forwardedProto}://${forwardedHost}` : url.origin;
 
   const supabase = await createClient();
 
