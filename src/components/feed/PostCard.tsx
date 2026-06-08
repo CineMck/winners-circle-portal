@@ -11,6 +11,40 @@ import CommentSection from './CommentSection';
 // Mux Player is a heavy web component — load it only when a Mux video renders.
 const MuxPlayer = dynamic(() => import('@mux/mux-player-react'), { ssr: false });
 
+/**
+ * Feed video player for Mux posts.
+ *
+ * With preload="none" the player can't know the video's dimensions until play,
+ * so on its own it defaults to a 16:9 box and pillarboxes portrait clips. We
+ * always have a correctly-proportioned poster, so we use the poster image as an
+ * invisible sizer: it establishes the right aspect ratio (capped at 100% width /
+ * 80vh height) and the player is absolutely positioned to fill that exact box.
+ */
+function FeedMuxVideo({ playbackId, poster }: { playbackId?: string; poster?: string }) {
+  if (!playbackId) return null;
+  // Fall back to Mux's auto-generated thumbnail if we have no stored poster.
+  const posterSrc = poster || `https://image.mux.com/${playbackId}/thumbnail.jpg`;
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center' }}>
+      <div style={{ position: 'relative', maxWidth: '100%', lineHeight: 0 }}>
+        <img
+          src={posterSrc}
+          alt=""
+          aria-hidden
+          style={{ display: 'block', maxWidth: '100%', maxHeight: '80vh', width: 'auto', height: 'auto', borderRadius: '8px' }}
+        />
+        <MuxPlayer
+          playbackId={playbackId}
+          poster={posterSrc}
+          preload="none"
+          streamType="on-demand"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', borderRadius: '8px', overflow: 'hidden', background: '#000' }}
+        />
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   post: Post;
   currentUser: Profile;
@@ -154,15 +188,12 @@ export default function PostCard({ post, currentUser, onPin, onRemove }: Props) 
         }}>
           {post.media_urls.map((url, i) => (
             isMuxUrl(url) ? (
-              // Mux feed videos: adaptive HLS via Mux Player. preload="none" +
-              // poster keeps the feed light — no video bytes load until play.
-              <MuxPlayer
+              // Mux feed videos: adaptive HLS via Mux Player, sized to the poster's
+              // aspect ratio so portrait clips aren't pillarboxed in a 16:9 box.
+              <FeedMuxVideo
                 key={i}
                 playbackId={muxPlaybackId(url) || undefined}
                 poster={post.media_thumbnails?.[i] || undefined}
-                preload="none"
-                streamType="on-demand"
-                style={{ width: '100%', maxHeight: '80vh', borderRadius: '8px', display: 'block', background: '#000', overflow: 'hidden' }}
               />
             ) : url.match(/\.(mp4|webm|mov)/i) ? (
               // Legacy Supabase videos (pre-Mux). preload="none" + poster keeps the feed light.
