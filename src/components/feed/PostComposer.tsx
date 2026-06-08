@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Profile, getTierColor, getInitials } from '@/types';
 import { uploadToStorage } from '@/lib/upload';
+import { uploadVideoToMux } from '@/lib/muxUpload';
 import { generateVideoThumbnails, VideoThumb } from '@/lib/videoThumbnails';
 
 interface Props {
@@ -151,20 +152,16 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
     let mediaThumbnails: string[] = [];
 
     try {
-      setUploadProgress(items.length > 1 ? `Uploading ${items.length} files…` : 'Uploading…');
+      const hasVideo = items.some(it => it.isVideo);
+      setUploadProgress(hasVideo ? 'Uploading & processing video…' : (items.length > 1 ? `Uploading ${items.length} files…` : 'Uploading…'));
 
-      // Upload all media (and any chosen video posters) in parallel,
-      // preserving order via the array index.
+      // Upload all media in parallel, preserving order via the array index.
+      //   • Images  → Supabase Storage (direct).
+      //   • Videos  → Mux (transcoded to adaptive HLS); the chosen poster
+      //              frame goes to Supabase so the feed shows an image instantly.
       const results = await Promise.all(items.map(async (item) => {
-        const { url } = await uploadToStorage({
-          file: item.file,
-          fileName: item.file.name,
-          folder: 'posts',
-          userId: currentUser.id,
-        });
-
-        let thumbUrl = '';
         if (item.isVideo) {
+          let thumbUrl = '';
           const poster = chosenPoster(item);
           if (poster) {
             const { url: posterUrl } = await uploadToStorage({
@@ -175,8 +172,17 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
             });
             thumbUrl = posterUrl;
           }
+          const { streamUrl } = await uploadVideoToMux(item.file);
+          return { url: streamUrl, thumbUrl };
         }
-        return { url, thumbUrl };
+
+        const { url } = await uploadToStorage({
+          file: item.file,
+          fileName: item.file.name,
+          folder: 'posts',
+          userId: currentUser.id,
+        });
+        return { url, thumbUrl: '' };
       }));
 
       mediaUrls = results.map(r => r.url);

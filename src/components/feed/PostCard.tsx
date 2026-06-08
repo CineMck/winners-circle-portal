@@ -1,10 +1,15 @@
 'use client';
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Post, Profile } from '@/types';
 import { formatDate, getTierColor, getTierLabel, getInitials } from '@/lib/utils';
 import { createClient } from '@/lib/supabase/client';
+import { isMuxUrl, muxPlaybackId } from '@/lib/muxPlayback';
 import Link from 'next/link';
 import CommentSection from './CommentSection';
+
+// Mux Player is a heavy web component — load it only when a Mux video renders.
+const MuxPlayer = dynamic(() => import('@mux/mux-player-react'), { ssr: false });
 
 interface Props {
   post: Post;
@@ -148,9 +153,19 @@ export default function PostCard({ post, currentUser, onPin, onRemove }: Props) 
           gap: '8px', marginBottom: '12px',
         }}>
           {post.media_urls.map((url, i) => (
-            url.match(/\.(mp4|webm|mov)/i) ? (
-              // Videos: natural aspect ratio, centred, max 80vh tall so landscape vids don't overflow.
-              // preload="none" + poster keeps the feed light — no video bytes load until play.
+            isMuxUrl(url) ? (
+              // Mux feed videos: adaptive HLS via Mux Player. preload="none" +
+              // poster keeps the feed light — no video bytes load until play.
+              <MuxPlayer
+                key={i}
+                playbackId={muxPlaybackId(url) || undefined}
+                poster={post.media_thumbnails?.[i] || undefined}
+                preload="none"
+                streamType="on-demand"
+                style={{ width: '100%', maxHeight: '80vh', borderRadius: '8px', display: 'block', background: '#000', overflow: 'hidden' }}
+              />
+            ) : url.match(/\.(mp4|webm|mov)/i) ? (
+              // Legacy Supabase videos (pre-Mux). preload="none" + poster keeps the feed light.
               <video
                 key={i} src={url} controls preload="none"
                 poster={post.media_thumbnails?.[i] || undefined}
