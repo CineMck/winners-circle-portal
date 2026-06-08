@@ -21,16 +21,27 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (!profile || !['admin', 'moderator'].includes(profile.role)) {
+    // Role and tier changes are privileged — admin only (a moderator must not be
+    // able to grant admin to themselves/others or hand out free paid tiers).
+    if (!profile || profile.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { userId, tier, role } = await req.json();
     if (!userId) return NextResponse.json({ error: 'userId is required' }, { status: 400 });
 
+    const ALLOWED_ROLES = ['member', 'moderator', 'admin'];
+    const ALLOWED_TIERS = ['free', 'core', 'elite', 'founding', 're_promo'];
+
     const updates: Record<string, string> = {};
-    if (tier !== undefined) updates.tier = tier;
-    if (role !== undefined) updates.role = role;
+    if (tier !== undefined) {
+      if (!ALLOWED_TIERS.includes(tier)) return NextResponse.json({ error: 'Invalid tier' }, { status: 400 });
+      updates.tier = tier;
+    }
+    if (role !== undefined) {
+      if (!ALLOWED_ROLES.includes(role)) return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+      updates.role = role;
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });

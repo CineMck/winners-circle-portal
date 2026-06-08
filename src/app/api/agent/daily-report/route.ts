@@ -74,9 +74,10 @@ async function callClaude(systemPrompt: string, userPrompt: string): Promise<str
 
 // ── GET /api/agent/daily-report — callable by cron or manually ──
 export async function GET(req: NextRequest) {
-  // Verify cron secret (optional but recommended)
+  // Verify cron secret — fail closed: if the secret isn't configured, reject
+  // (this endpoint spends Anthropic credits and reads member data).
   const secret = req.nextUrl.searchParams.get('secret');
-  if (process.env.AGENT_CRON_SECRET && secret !== process.env.AGENT_CRON_SECRET) {
+  if (!process.env.AGENT_CRON_SECRET || secret !== process.env.AGENT_CRON_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -369,9 +370,9 @@ export async function POST(req: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
-    // Auth check via header
+    // Auth check via header — fail closed if the secret isn't configured.
     const authHeader = req.headers.get('x-admin-secret');
-    if (authHeader !== process.env.AGENT_CRON_SECRET && process.env.AGENT_CRON_SECRET) {
+    if (!process.env.AGENT_CRON_SECRET || authHeader !== process.env.AGENT_CRON_SECRET) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     // Re-use GET logic

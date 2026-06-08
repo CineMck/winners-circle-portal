@@ -21,7 +21,8 @@ export async function DELETE(req: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    if (!profile || !['admin', 'moderator'].includes(profile.role)) {
+    // Deleting members is destructive — admin only.
+    if (!profile || profile.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

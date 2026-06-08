@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { Resend } from 'resend';
 
 const supabaseAdmin = createClient(
@@ -123,6 +124,16 @@ function buildInviteEmail({
 
 export async function POST(req: NextRequest) {
   try {
+    // Only admins/moderators may invite members and assign tiers — this route
+    // uses the service-role key to mint invite links and pre-create profiles.
+    const auth = await createServerClient();
+    const { data: { user } } = await auth.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { data: me } = await auth.from('profiles').select('role').eq('id', user.id).single();
+    if (!me || !['admin', 'moderator'].includes(me.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { email, tier, message, inviterName } = await req.json();
 
     if (!email) {
