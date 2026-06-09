@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { reEmailShell, escapeHtml } from '@/lib/reMarketing';
+import { sendSms, twilioConfigured } from '@/lib/twilio';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
 
     const { data: regs } = await db
       .from('re_mastermind_registrations')
-      .select('id, first_name, email, unsubscribe_token')
+      .select('id, first_name, email, unsubscribe_token, phone, sms_consent, sms_opt_out')
       .eq('session_id', s.id)
       .eq('unsubscribed', false)
       .is(col, null);
@@ -87,6 +88,17 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < emails.length; i += 50) {
       try { await resend.batch.send(emails.slice(i, i + 50)); } catch (e) { console.error('reminder batch failed:', e); }
     }
+
+    // SMS reminder to opted-in registrants (best-effort).
+    if (twilioConfigured()) {
+      const smsText = `${c.heading}: ${s.label}.${zoom ? ` Join: ${zoom}` : ''} Reply STOP to opt out.`;
+      for (const r of regs) {
+        if (r.phone && r.sms_consent && !r.sms_opt_out) {
+          try { await sendSms(r.phone as string, smsText); } catch (e) { console.error('reminder sms failed:', e); }
+        }
+      }
+    }
+
     await db.from('re_mastermind_registrations')
       .update({ [col]: new Date().toISOString() })
       .in('id', regs.map((r) => r.id));

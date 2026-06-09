@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
   const brokerage = String(body.brokerage || '').trim().slice(0, 200);
   const sessionId = String(body.sessionId || body.callSessionId || '').trim();
   const problem = String(body.problem || '').trim().slice(0, 2000);
+  const smsConsent = body.smsConsent === true || body.smsConsent === 'true';
 
   if (!firstName || !lastName || !email || !phone || !brokerage) {
     return NextResponse.json({ error: 'Please fill in all required fields.' }, { status: 400 });
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
       call_date: callDate,
       session_id: session.id,
       problem: problem || null,
+      sms_consent: smsConsent,
     }).select('id, unsubscribe_token').single();
     if (error) {
       console.error('[re-register] DB insert failed:', error.message);
@@ -86,6 +88,30 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('[re-register] DB insert threw:', err);
     return NextResponse.json({ error: 'We could not process your registration right now. Please try again.' }, { status: 500 });
+  }
+
+  // ── Enroll into the active RE nurture sequence (best-effort) ──
+  try {
+    const { data: seq } = await db
+      .from('email_sequences').select('id').eq('trigger', 're_rsvp').eq('is_active', true).limit(1).maybeSingle();
+    if (seq) {
+      const { data: firstStep } = await db
+        .from('sequence_steps').select('delay_minutes')
+        .eq('sequence_id', seq.id).eq('is_active', true)
+        .order('step_order', { ascending: true }).limit(1).maybeSingle();
+      const delayMin = firstStep?.delay_minutes ?? 0;
+      await db.from('sequence_enrollments').insert({
+        sequence_id: seq.id,
+        registration_id: regId,
+        email,
+        phone,
+        current_step: 0,
+        status: 'active',
+        next_run_at: new Date(Date.now() + delayMin * 60_000).toISOString(),
+      });
+    }
+  } catch (err) {
+    console.error('[re-register] enrollment failed:', err);
   }
 
   const apiKey = process.env.RESEND_API_KEY;

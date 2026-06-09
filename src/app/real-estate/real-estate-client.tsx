@@ -186,6 +186,7 @@ export default function RealEstateClient({ sessions = [] }: { sessions?: CallSes
       brokerage: String(fd.get('brokerage') || '').trim(),
       sessionId: String(fd.get('sessionId') || ''),
       problem: String(fd.get('problem') || '').trim(),
+      smsConsent: fd.get('smsConsent') === 'on',
     };
     setSubmitting(true);
     try {
@@ -462,6 +463,12 @@ export default function RealEstateClient({ sessions = [] }: { sessions?: CallSes
                     <label htmlFor="problem">What&apos;s the #1 thing you want John to help you solve?</label>
                     <textarea id="problem" name="problem" rows={3} placeholder="e.g., my pipeline goes cold every 90 days, recruiting drains my time, I can't get past $X in GCI..." />
                   </div>
+                  <label className="form-field full" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', flexDirection: 'row' }}>
+                    <input type="checkbox" name="smsConsent" style={{ marginTop: 3, accentColor: 'var(--gold)' }} />
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5 }}>
+                      Text me reminders &amp; updates about the call (optional). Msg &amp; data rates may apply; reply STOP to opt out anytime.
+                    </span>
+                  </label>
                   <button type="submit" className="btn-primary form-submit" disabled={submitting}>
                     {submitting ? 'Reserving…' : 'Reserve My Free Spot'}
                     <Arrow />
