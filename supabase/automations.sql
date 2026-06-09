@@ -59,23 +59,21 @@ create index if not exists seq_enroll_due_idx on sequence_enrollments(status, ne
 create index if not exists seq_steps_seq_idx on sequence_steps(sequence_id, step_order);
 
 -- ── Seed: recommended RE lead-nurture sequence (inactive until you turn it on) ──
-do $$
-declare sid uuid;
-begin
-  if not exists (select 1 from email_sequences where name = 'RE Lead Nurture') then
-    insert into email_sequences (name, trigger, is_active) values ('RE Lead Nurture', 're_rsvp', false) returning id into sid;
-    insert into sequence_steps (sequence_id, step_order, delay_minutes, channel, subject, body) values
-    (sid, 1, 60,   'email', 'Welcome to The Winners Circle 👋',
-      '<p>Hi {{first_name}},</p><p>Thanks for registering. The Winners Circle is John Wentworth''s mastermind for real estate pros who want to scale without burning out. Over the next few days I''ll share a few things that move the needle most — and how to go deeper if you want.</p><p>See you on the call.</p>'),
-    (sid, 2, 1440, 'email', 'The #1 thing that separates 7-figure agents',
-      '<p>Hi {{first_name}},</p><p>Most agents plateau because their business depends entirely on them. The ones who break through build <strong>systems, accountability, and a room of people playing at a higher level</strong>. That''s exactly what the Circle is built around.</p>'),
-    (sid, 3, 2880, 'email', 'Your 50% promo is open — first 4 months for $300',
-      '<p>Hi {{first_name}},</p><p>As a thank-you for joining the mastermind call, you can start your full membership at <strong>50% off your first 4 months — $300 total (normally $600), then $150/mo</strong>.</p><p style="text-align:center;margin:24px 0;"><a href="https://winnerscircleportal.com/real-estate/join" style="display:inline-block;background:#c9a84c;color:#0a0a0a;font-weight:800;text-decoration:none;padding:14px 30px;border-radius:10px;">Become a member →</a></p>'),
-    (sid, 4, 2880, 'sms',   '',
-      'John here — your Winners Circle promo (50% off your first 4 months) is still open: https://winnerscircleportal.com/real-estate/join  Reply STOP to opt out.'),
-    (sid, 5, 2880, 'email', 'Spots are filling — promo closing soon',
-      '<p>Hi {{first_name}},</p><p>Quick heads up: the 50%-off promo won''t be around forever. If you''ve been on the fence, now''s the time to lock in $300 for your first 4 months.</p><p style="text-align:center;margin:24px 0;"><a href="https://winnerscircleportal.com/real-estate/join" style="display:inline-block;background:#c9a84c;color:#0a0a0a;font-weight:800;text-decoration:none;padding:14px 30px;border-radius:10px;">Claim the promo →</a></p>'),
-    (sid, 6, 4320, 'email', 'Still thinking it over?',
-      '<p>Hi {{first_name}},</p><p>Just checking in — is there anything holding you back from joining? Reply to this email and tell me; I read every one. And if the timing isn''t right, no worries at all.</p>');
-  end if;
-end $$;
+-- No DO/$$ block (some SQL editors mishandle dollar-quoting) — plain guarded inserts.
+insert into email_sequences (name, trigger, is_active)
+select 'RE Lead Nurture', 're_rsvp', false
+where not exists (select 1 from email_sequences where name = 'RE Lead Nurture');
+
+insert into sequence_steps (sequence_id, step_order, delay_minutes, channel, subject, body)
+select s.id, v.step_order, v.delay_minutes, v.channel, v.subject, v.body
+from email_sequences s
+cross join (values
+  (1, 60,   'email', 'Welcome to The Winners Circle', '<p>Hi {{first_name}},</p><p>Thanks for registering. The Winners Circle is John Wentworth''s mastermind for real estate pros who want to scale without burning out. Over the next few days I''ll share a few things that move the needle most.</p><p>See you on the call.</p>'),
+  (2, 1440, 'email', 'The #1 thing that separates 7-figure agents', '<p>Hi {{first_name}},</p><p>Most agents plateau because their business depends entirely on them. The ones who break through build <strong>systems, accountability, and a room of people playing at a higher level</strong>. That''s exactly what the Circle is built around.</p>'),
+  (3, 2880, 'email', 'Your 50% promo is open - first 4 months for $300', '<p>Hi {{first_name}},</p><p>As a thank-you for joining the mastermind call, you can start your full membership at <strong>50% off your first 4 months - $300 total (normally $600), then $150/mo</strong>.</p><p style="text-align:center;margin:24px 0;"><a href="https://winnerscircleportal.com/real-estate/join" style="display:inline-block;background:#c9a84c;color:#0a0a0a;font-weight:800;text-decoration:none;padding:14px 30px;border-radius:10px;">Become a member</a></p>'),
+  (4, 2880, 'sms',   '', 'John here - your Winners Circle promo (50% off your first 4 months) is still open: https://winnerscircleportal.com/real-estate/join  Reply STOP to opt out.'),
+  (5, 2880, 'email', 'Spots are filling - promo closing soon', '<p>Hi {{first_name}},</p><p>Quick heads up: the 50%-off promo won''t be around forever. If you''ve been on the fence, now''s the time to lock in $300 for your first 4 months.</p><p style="text-align:center;margin:24px 0;"><a href="https://winnerscircleportal.com/real-estate/join" style="display:inline-block;background:#c9a84c;color:#0a0a0a;font-weight:800;text-decoration:none;padding:14px 30px;border-radius:10px;">Claim the promo</a></p>'),
+  (6, 4320, 'email', 'Still thinking it over?', '<p>Hi {{first_name}},</p><p>Just checking in - is there anything holding you back from joining? Reply to this email and tell me; I read every one. And if the timing isn''t right, no worries at all.</p>')
+) as v(step_order, delay_minutes, channel, subject, body)
+where s.name = 'RE Lead Nurture'
+  and not exists (select 1 from sequence_steps st where st.sequence_id = s.id);
