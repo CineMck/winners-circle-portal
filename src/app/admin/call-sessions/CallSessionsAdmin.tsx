@@ -33,6 +33,10 @@ export default function CallSessionsAdmin({ initial }: { initial: Session[] }) {
   const [zoomUrl, setZoomUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [editId, setEditId] = useState<string | null>(null);
+  const [eLabel, setELabel] = useState('');
+  const [eStartsAt, setEStartsAt] = useState('');
+  const [eZoom, setEZoom] = useState('');
 
   async function addSession(e: React.FormEvent) {
     e.preventDefault();
@@ -65,6 +69,27 @@ export default function CallSessionsAdmin({ initial }: { initial: Session[] }) {
     if (res.ok) setSessions(prev => prev.filter(x => x.id !== s.id));
   }
 
+  function startEdit(s: Session) {
+    setEditId(s.id);
+    setELabel(s.label);
+    setEStartsAt(toLocalInput(s.starts_at));
+    setEZoom(s.zoom_url || '');
+  }
+
+  async function saveEdit(s: Session) {
+    if (!eLabel.trim() || !eStartsAt) return;
+    const res = await fetch('/api/admin/call-sessions', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: s.id, label: eLabel.trim(), starts_at: new Date(eStartsAt).toISOString(), zoom_url: eZoom.trim() || null }),
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const updated: Session = data.session || { ...s, label: eLabel.trim(), starts_at: new Date(eStartsAt).toISOString(), zoom_url: eZoom.trim() || null };
+      setSessions(prev => prev.map(x => x.id === s.id ? updated : x));
+      setEditId(null);
+    }
+  }
+
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '8px 0 40px' }}>
       <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Call Sessions</h1>
@@ -94,15 +119,41 @@ export default function CallSessionsAdmin({ initial }: { initial: Session[] }) {
       <div style={{ display: 'grid', gap: 10 }}>
         {sessions.length === 0 && <p style={{ color: 'var(--muted)', fontSize: 14 }}>No call sessions yet.</p>}
         {sessions.map(s => (
-          <div key={s.id} className="card" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12, opacity: s.is_active ? 1 : 0.55 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{s.label}</div>
-              <div style={{ fontSize: 12, color: 'var(--muted)' }}>{fmt(s.starts_at)}{s.zoom_url ? ' · Zoom link set' : ' · no Zoom link'}</div>
-            </div>
-            <button onClick={() => toggleActive(s)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 10px', color: 'var(--muted)', cursor: 'pointer', fontSize: 12 }}>
-              {s.is_active ? 'Active' : 'Inactive'}
-            </button>
-            <button onClick={() => remove(s)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12 }}>Delete</button>
+          <div key={s.id} className="card" style={{ padding: 14, opacity: s.is_active ? 1 : 0.55 }}>
+            {editId === s.id ? (
+              <div style={{ display: 'grid', gap: 10 }}>
+                <div>
+                  <label style={labelStyle}>Label (shown to registrants)</label>
+                  <input style={input} value={eLabel} onChange={e => setELabel(e.target.value)} />
+                </div>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <label style={labelStyle}>Start date &amp; time</label>
+                    <input style={input} type="datetime-local" value={eStartsAt} onChange={e => setEStartsAt(e.target.value)} />
+                  </div>
+                  <div style={{ flex: 2, minWidth: 200 }}>
+                    <label style={labelStyle}>Zoom link</label>
+                    <input style={input} value={eZoom} onChange={e => setEZoom(e.target.value)} placeholder="https://zoom.us/j/…" />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => saveEdit(s)} className="btn-gold" style={{ padding: '7px 16px', fontSize: 13 }}>Save</button>
+                  <button onClick={() => setEditId(null)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '7px 14px', color: 'var(--muted)', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{s.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)' }}>{fmt(s.starts_at)}{s.zoom_url ? ' · Zoom link set' : ' · no Zoom link'}</div>
+                </div>
+                <button onClick={() => startEdit(s)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 10px', color: 'var(--muted)', cursor: 'pointer', fontSize: 12 }}>Edit</button>
+                <button onClick={() => toggleActive(s)} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 10px', color: 'var(--muted)', cursor: 'pointer', fontSize: 12 }}>
+                  {s.is_active ? 'Active' : 'Inactive'}
+                </button>
+                <button onClick={() => remove(s)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 12 }}>Delete</button>
+              </div>
+            )}
           </div>
         ))}
       </div>
