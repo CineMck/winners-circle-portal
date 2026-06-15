@@ -200,6 +200,15 @@ export default function RealEstateClient({ sessions = [] }: { sessions?: CallSes
         throw new Error(data?.error || 'Something went wrong. Please try again.');
       }
       setSubmitted(true);
+      // Fire the Meta Pixel "Lead" conversion on successful webinar
+      // registration so ad campaigns can optimize for sign-ups.
+      if (typeof window !== 'undefined') {
+        (window as Window & { fbq?: (...args: unknown[]) => void }).fbq?.(
+          'track',
+          'Lead',
+          { content_name: 'Real Estate Mastermind Registration' }
+        );
+      }
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {

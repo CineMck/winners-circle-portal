@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Cinzel } from 'next/font/google';
 import './globals.css';
+import MetaPixel from '@/components/MetaPixel';
 
 // Brand wordmark font — Trajan-style Roman capitals, matches the Winners
 // Circle logo treatment. Loaded as a CSS variable for use in selected
@@ -31,7 +32,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={cinzel.variable}>
-      <body>{children}</body>
+      <body>
+        <MetaPixel />
+        {children}
+      </body>
     </html>
   );
 }
