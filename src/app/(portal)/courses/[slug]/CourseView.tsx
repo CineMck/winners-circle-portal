@@ -59,13 +59,12 @@ function formatDuration(secs?: number) {
 export default function CourseView({ course, profile, completedLessonIds, accessible }: Props) {
   const supabase = createClient();
   const lessons = [...(course.lessons || [])].filter(l => l.is_published).sort((a, b) => a.sort_order - b.sort_order);
-  // For single-video / no-intro courses, open straight to the first lesson.
-  const [activeLesson, setActiveLesson] = useState<Lesson | null>(course.hide_intro ? (lessons[0] ?? null) : null);
+  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set(completedLessonIds));
   const [marking, setMarking] = useState(false);
 
   const currentVideo = activeLesson ? activeLesson.video_url : course.intro_video_url;
-  const currentTitle = activeLesson ? activeLesson.title : 'Course Introduction';
+  const currentTitle = activeLesson ? activeLesson.title : (course.hide_intro ? course.title : 'Course Introduction');
   const currentDesc = activeLesson ? activeLesson.description : course.description;
   const completedCount = lessons.filter(l => completed.has(l.id)).length;
   const pct = lessons.length > 0 ? Math.round((completedCount / lessons.length) * 100) : 0;
@@ -132,8 +131,7 @@ export default function CourseView({ course, profile, completedLessonIds, access
           </div>
         </div>
 
-        {/* Intro — hidden for single-video / no-intro courses */}
-        {!course.hide_intro && (
+        {/* Intro / course overview */}
         <button
           onClick={() => setActiveLesson(null)}
           style={{
@@ -146,14 +144,13 @@ export default function CourseView({ course, profile, completedLessonIds, access
           <span style={{ fontSize: '16px', flexShrink: 0 }}>▶</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '13px', fontWeight: activeLesson === null ? 700 : 500, color: activeLesson === null ? 'var(--gold)' : 'var(--text)' }}>
-              Course Introduction
+              {course.hide_intro ? 'Overview' : 'Course Introduction'}
             </div>
             {course.intro_video_url && (
               <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>Intro video</div>
             )}
           </div>
         </button>
-        )}
 
         {/* Lessons */}
         {lessons.map((lesson, idx) => {
@@ -212,7 +209,16 @@ export default function CourseView({ course, profile, completedLessonIds, access
                 allowFullScreen
               />
             );
-          })() : (
+          })() : course.thumbnail_url ? (
+            // No video for this view (e.g. a no-intro course overview) — show the
+            // course thumbnail instead of an empty player.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={course.thumbnail_url}
+              alt={course.title}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
+            />
+          ) : (
             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '12px', color: '#555' }}>
               <span style={{ fontSize: '48px' }}>🎬</span>
               <span style={{ fontSize: '14px' }}>No video added yet</span>
