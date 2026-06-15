@@ -24,6 +24,7 @@ interface Course {
   is_published: boolean;
   sort_order: number;
   created_at: string;
+  hide_intro?: boolean;
   lessons?: Lesson[];
 }
 
@@ -143,6 +144,12 @@ export default function CoursesAdmin({ courses: initial, adminId }: { courses: C
     setCourses(prev => prev.map(c => c.id === courseId ? { ...c, intro_video_url: url } : c));
     setShowUrlInput(prev => ({ ...prev, [`intro-${courseId}`]: false }));
     setVideoUrlInputs(prev => ({ ...prev, [`intro-url-${courseId}`]: '' }));
+  }
+
+  // ── Toggle whether the course shows an intro section ───────
+  async function toggleHideIntro(courseId: string, hide: boolean) {
+    await supabase.from('courses').update({ hide_intro: hide }).eq('id', courseId);
+    setCourses(prev => prev.map(c => c.id === courseId ? { ...c, hide_intro: hide } : c));
   }
 
   // ── Save lesson video URL ──────────────────────────────────
@@ -389,6 +396,17 @@ export default function CoursesAdmin({ courses: initial, adminId }: { courses: C
                       </div>
                     </div>
                   </div>
+
+                  {/* No-intro toggle — for single-video courses */}
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', margin: '0 0 24px', cursor: 'pointer', fontSize: '13px', color: '#bbb', lineHeight: 1.5 }}>
+                    <input
+                      type="checkbox"
+                      checked={!!course.hide_intro}
+                      onChange={e => toggleHideIntro(course.id, e.target.checked)}
+                      style={{ marginTop: '2px', width: 16, height: 16, accentColor: '#c9a84c', cursor: 'pointer', flexShrink: 0 }}
+                    />
+                    <span><strong style={{ color: '#fff' }}>No intro video</strong> — hide the &ldquo;Course Introduction&rdquo; section and open straight to the first lesson (for single-video courses).</span>
+                  </label>
 
                   {/* Lessons list */}
                   <div style={{ marginBottom: '20px' }}>

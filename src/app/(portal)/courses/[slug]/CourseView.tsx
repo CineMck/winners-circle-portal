@@ -21,6 +21,7 @@ interface Course {
   intro_video_url?: string;
   thumbnail_url?: string;
   tier_required: string;
+  hide_intro?: boolean;
   lessons?: Lesson[];
 }
 
@@ -35,9 +36,16 @@ function getEmbedUrl(url: string): { type: 'youtube' | 'vimeo' | 'direct'; src: 
   // YouTube
   const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
   if (ytMatch) return { type: 'youtube', src: `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1` };
-  // Vimeo
-  const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
-  if (vimeoMatch) return { type: 'vimeo', src: `https://player.vimeo.com/video/${vimeoMatch[1]}?dnt=1` };
+  // Vimeo — unlisted videos require a privacy hash, which can appear either as
+  // a path segment (vimeo.com/ID/HASH) or a query param (?h=HASH). Without it,
+  // Vimeo shows "Sorry, we're having a little trouble."
+  const vimeoMatch = url.match(/vimeo\.com\/(?:video\/)?(\d+)(?:\/([a-zA-Z0-9]+))?/);
+  if (vimeoMatch) {
+    const id = vimeoMatch[1];
+    const hParam = url.match(/[?&]h=([a-zA-Z0-9]+)/);
+    const hash = hParam?.[1] || vimeoMatch[2];
+    return { type: 'vimeo', src: `https://player.vimeo.com/video/${id}?dnt=1${hash ? `&h=${hash}` : ''}` };
+  }
   // Direct file
   return { type: 'direct', src: url };
 }
@@ -51,7 +59,8 @@ function formatDuration(secs?: number) {
 export default function CourseView({ course, profile, completedLessonIds, accessible }: Props) {
   const supabase = createClient();
   const lessons = [...(course.lessons || [])].filter(l => l.is_published).sort((a, b) => a.sort_order - b.sort_order);
-  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
+  // For single-video / no-intro courses, open straight to the first lesson.
+  const [activeLesson, setActiveLesson] = useState<Lesson | null>(course.hide_intro ? (lessons[0] ?? null) : null);
   const [completed, setCompleted] = useState<Set<string>>(new Set(completedLessonIds));
   const [marking, setMarking] = useState(false);
 
@@ -123,7 +132,8 @@ export default function CourseView({ course, profile, completedLessonIds, access
           </div>
         </div>
 
-        {/* Intro */}
+        {/* Intro — hidden for single-video / no-intro courses */}
+        {!course.hide_intro && (
         <button
           onClick={() => setActiveLesson(null)}
           style={{
@@ -143,6 +153,7 @@ export default function CourseView({ course, profile, completedLessonIds, access
             )}
           </div>
         </button>
+        )}
 
         {/* Lessons */}
         {lessons.map((lesson, idx) => {
