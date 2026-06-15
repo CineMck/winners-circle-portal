@@ -4,6 +4,7 @@ import { Resend } from 'resend';
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rateLimit';
 import { reEmailShell, formatCallTime, escapeHtml } from '@/lib/reMarketing';
 import { buildIcs } from '@/lib/ics';
+import { sendMetaLeadEvent } from '@/lib/metaCapi';
 
 /**
  * POST /api/real-estate/register
@@ -40,6 +41,8 @@ export async function POST(req: NextRequest) {
   const sessionId = String(body.sessionId || body.callSessionId || '').trim();
   const problem = String(body.problem || '').trim().slice(0, 2000);
   const smsConsent = body.smsConsent === true || body.smsConsent === 'true';
+  // Shared with the browser Pixel so Meta deduplicates the two Lead events.
+  const eventId = String(body.eventId || '').trim();
 
   if (!firstName || !lastName || !email || !phone || !brokerage) {
     return NextResponse.json({ error: 'Please fill in all required fields.' }, { status: 400 });
@@ -112,6 +115,25 @@ export async function POST(req: NextRequest) {
     }
   } catch (err) {
     console.error('[re-register] enrollment failed:', err);
+  }
+
+  // ── Meta Conversions API: server-side Lead, deduped with the browser Pixel ──
+  // Best-effort; inert unless META_CAPI_ACCESS_TOKEN is configured.
+  try {
+    await sendMetaLeadEvent({
+      eventId: eventId || `lead-${regId}`,
+      email,
+      phone,
+      firstName,
+      lastName,
+      clientIp: clientIp(req),
+      userAgent: req.headers.get('user-agent') || undefined,
+      fbp: req.cookies.get('_fbp')?.value,
+      fbc: req.cookies.get('_fbc')?.value,
+      eventSourceUrl: req.headers.get('referer') || undefined,
+    });
+  } catch (err) {
+    console.error('[re-register] Meta CAPI threw:', err);
   }
 
   const apiKey = process.env.RESEND_API_KEY;

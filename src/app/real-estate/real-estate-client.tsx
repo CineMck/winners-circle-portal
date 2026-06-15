@@ -178,7 +178,14 @@ export default function RealEstateClient({ sessions = [] }: { sessions?: CallSes
     e.preventDefault();
     setSubmitError('');
     const fd = new FormData(e.currentTarget);
+    // Shared ID so the browser Pixel event and the server Conversions API
+    // event deduplicate into one conversion on Meta's side.
+    const eventId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `lead-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const payload = {
+      eventId,
       firstName: String(fd.get('firstName') || '').trim(),
       lastName: String(fd.get('lastName') || '').trim(),
       email: String(fd.get('email') || '').trim(),
@@ -206,7 +213,8 @@ export default function RealEstateClient({ sessions = [] }: { sessions?: CallSes
         (window as Window & { fbq?: (...args: unknown[]) => void }).fbq?.(
           'track',
           'Lead',
-          { content_name: 'Real Estate Mastermind Registration' }
+          { content_name: 'Real Estate Mastermind Registration' },
+          { eventID: eventId }
         );
       }
     } catch (err) {

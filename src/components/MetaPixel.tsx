@@ -6,10 +6,10 @@ import Script from 'next/script';
 //
 // The dataset / Pixel ID is read from NEXT_PUBLIC_META_PIXEL_ID so it can be
 // swapped per environment without a code change. It falls back to the
-// Winners Circle account's "NeuLuma" dataset so tracking works even before
-// the env var is configured on Railway. To point at a different pixel later,
-// set NEXT_PUBLIC_META_PIXEL_ID in the Railway env and redeploy.
-const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || '113828852134324';
+// "The Winners Circle" web pixel (in the Neu Luma business portfolio) so
+// tracking works even before the env var is configured on Railway. To point
+// at a different pixel later, set NEXT_PUBLIC_META_PIXEL_ID and redeploy.
+const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || '1517559003151909';
 
 export default function MetaPixel() {
   if (!PIXEL_ID) return null;
