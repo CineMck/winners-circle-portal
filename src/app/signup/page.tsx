@@ -204,7 +204,15 @@ export default function SignupPage() {
         return;
       }
 
-      // Free tier → straight to the portal
+      // Free tier → straight to the portal.
+      // Fire the Meta Pixel free-membership signup conversion.
+      if (typeof window !== 'undefined') {
+        (window as Window & { fbq?: (...args: unknown[]) => void }).fbq?.(
+          'track',
+          'CompleteRegistration',
+          { content_name: 'Free Membership' }
+        );
+      }
       setStage('done');
       setTimeout(() => { window.location.href = '/home'; }, 1500);
     } catch (err) {

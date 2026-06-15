@@ -2,14 +2,14 @@ import { createHash } from 'node:crypto';
 
 // Meta Conversions API (server-side events).
 //
-// Sends the same conversions the browser Pixel fires, but server-to-server, so
-// events still land when the browser Pixel is blocked by ad blockers, iOS, or
-// Safari privacy protections. The browser event and the server event share an
-// `event_id`, and Meta deduplicates them into a single conversion.
+// Sends conversions server-to-server, so events still land when the browser
+// Pixel is blocked by ad blockers, iOS, or Safari privacy protections. When a
+// browser event and a server event share an `event_id`, Meta deduplicates them
+// into a single conversion.
 //
-// This is INERT until META_CAPI_ACCESS_TOKEN is set (a system-user token
-// generated in Meta Business Settings → Conversions API). The Pixel/dataset ID
-// matches the browser Pixel via NEXT_PUBLIC_META_PIXEL_ID.
+// INERT until META_CAPI_ACCESS_TOKEN is set (a system-user token generated in
+// Meta Business Settings → Conversions API). The Pixel/dataset ID matches the
+// browser Pixel via NEXT_PUBLIC_META_PIXEL_ID.
 
 const GRAPH_VERSION = 'v21.0';
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || '1517559003151909';
@@ -32,7 +32,10 @@ function hashPhone(value: string | undefined | null): string | undefined {
   return sha256(digits);
 }
 
-export interface MetaLeadParams {
+export interface MetaEventParams {
+  /** Standard event name, e.g. "Lead", "CompleteRegistration", "Purchase". */
+  eventName: string;
+  /** Stable ID shared with the browser Pixel (dedup) or unique per server event (idempotency). */
   eventId: string;
   email?: string;
   phone?: string;
@@ -43,13 +46,18 @@ export interface MetaLeadParams {
   fbp?: string;
   fbc?: string;
   eventSourceUrl?: string;
+  /** For Purchase/Subscribe: monetary value and ISO currency (e.g. "USD"). */
+  value?: number;
+  currency?: string;
+  /** Human-readable label stored in custom_data.content_name. */
+  contentName?: string;
 }
 
 /**
- * Send a server-side "Lead" event to the Meta Conversions API.
+ * Send a server-side event to the Meta Conversions API.
  * Best-effort: never throws, logs failures. No-op if no access token is set.
  */
-export async function sendMetaLeadEvent(params: MetaLeadParams): Promise<void> {
+export async function sendMetaEvent(params: MetaEventParams): Promise<void> {
   const token = process.env.META_CAPI_ACCESS_TOKEN;
   if (!token) return; // CAPI not configured — silently skip.
 
@@ -67,18 +75,23 @@ export async function sendMetaLeadEvent(params: MetaLeadParams): Promise<void> {
   if (params.fbp) userData.fbp = params.fbp;
   if (params.fbc) userData.fbc = params.fbc;
 
+  const customData: Record<string, unknown> = {};
+  if (params.contentName) customData.content_name = params.contentName;
+  if (typeof params.value === 'number') customData.value = params.value;
+  if (params.currency) customData.currency = params.currency;
+
   const testCode = process.env.META_CAPI_TEST_EVENT_CODE;
 
   const payload = {
     data: [
       {
-        event_name: 'Lead',
+        event_name: params.eventName,
         event_time: Math.floor(Date.now() / 1000),
         event_id: params.eventId,
         action_source: 'website',
         ...(params.eventSourceUrl ? { event_source_url: params.eventSourceUrl } : {}),
         user_data: userData,
-        custom_data: { content_name: 'Real Estate Mastermind Registration' },
+        custom_data: customData,
       },
     ],
     ...(testCode ? { test_event_code: testCode } : {}),
@@ -95,9 +108,19 @@ export async function sendMetaLeadEvent(params: MetaLeadParams): Promise<void> {
     );
     if (!res.ok) {
       const text = await res.text().catch(() => '');
-      console.error('[meta-capi] Lead event failed:', res.status, text);
+      console.error(`[meta-capi] ${params.eventName} event failed:`, res.status, text);
     }
   } catch (err) {
-    console.error('[meta-capi] Lead event threw:', err);
+    console.error(`[meta-capi] ${params.eventName} event threw:`, err);
   }
+}
+
+/** Backwards-compatible wrapper: server-side "Lead" event. */
+export type MetaLeadParams = Omit<MetaEventParams, 'eventName' | 'value' | 'currency'>;
+export async function sendMetaLeadEvent(params: MetaLeadParams): Promise<void> {
+  return sendMetaEvent({
+    ...params,
+    eventName: 'Lead',
+    contentName: params.contentName ?? 'Real Estate Mastermind Registration',
+  });
 }

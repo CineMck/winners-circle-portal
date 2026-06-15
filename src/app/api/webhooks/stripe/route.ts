@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/config';
 import { createAdminClient } from '@/lib/supabase/admin';
 import Stripe from 'stripe';
+import { sendMetaEvent } from '@/lib/metaCapi';
 
 const TIER_MAP: Record<string, string> = {
   [process.env.NEXT_PUBLIC_STRIPE_CORE_MONTHLY_PRICE_ID || '']: 'core',
@@ -73,6 +74,20 @@ export async function POST(request: NextRequest) {
               console.error('re_promo schedule setup failed:', e);
             }
           }
+        }
+        // Fire Meta Conversions API "Purchase" for the paid subscription.
+        // Idempotent on the Stripe session ID (safe if the webhook retries).
+        try {
+          await sendMetaEvent({
+            eventName: 'Purchase',
+            eventId: session.id,
+            email: session.customer_details?.email || undefined,
+            value: (session.amount_total ?? 0) / 100,
+            currency: (session.currency || 'usd').toUpperCase(),
+            contentName: `Winners Circle ${tier} membership`,
+          });
+        } catch (e) {
+          console.error('[stripe-webhook] Meta Purchase event failed:', e);
         }
       }
       break;
