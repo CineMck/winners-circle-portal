@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-type Row = { email: string; name: string; tier: string };
+type Row = { email: string; name: string; tier: string; stripeCustomerId?: string; stripeSubscriptionId?: string };
 type Result = { email: string; status: 'sent' | 'manual' | 'error'; detail?: string };
 
 const TIER_OPTIONS = [
@@ -71,6 +71,8 @@ export default function BulkInvite() {
       const emailIdx = header.findIndex(h => h === 'email' || h.includes('email'));
       const nameIdx = header.findIndex(h => h === 'name' || h === 'full name' || h === 'full_name');
       const tierIdx = header.findIndex(h => h === 'tier');
+      const custIdx = header.findIndex(h => h === 'stripe_customer_id' || h === 'customer_id' || h === 'customer id');
+      const subIdx = header.findIndex(h => h === 'stripe_subscription_id' || h === 'subscription_id' || h === 'subscription id');
       if (emailIdx === -1) { setRows([]); setParseError('Could not find an "email" column in the header row.'); return; }
       const seen = new Set<string>();
       const parsed: Row[] = [];
@@ -82,6 +84,8 @@ export default function BulkInvite() {
           email,
           name: nameIdx > -1 ? (grid[r][nameIdx] || '').trim() : '',
           tier: tierIdx > -1 ? normalizeTier(grid[r][tierIdx] || '') : '',
+          stripeCustomerId: custIdx > -1 ? (grid[r][custIdx] || '').trim() : undefined,
+          stripeSubscriptionId: subIdx > -1 ? (grid[r][subIdx] || '').trim() : undefined,
         });
       }
       setRows(parsed);
@@ -104,6 +108,9 @@ export default function BulkInvite() {
             tier: row.tier || fallbackTier,
             message: message.trim(),
             inviterName: "The Winner's Circle Team",
+            stripeCustomerId: row.stripeCustomerId || undefined,
+            stripeSubscriptionId: row.stripeSubscriptionId || undefined,
+            subscriptionStatus: row.stripeSubscriptionId ? 'active' : undefined,
           }),
         });
         const data = await res.json();
@@ -128,6 +135,7 @@ export default function BulkInvite() {
     URL.revokeObjectURL(url);
   }
 
+  const isLegacy = rows.some(r => r.stripeSubscriptionId || r.stripeCustomerId);
   const sentCount = results.filter(r => r.status === 'sent').length;
   const manualCount = results.filter(r => r.status === 'manual').length;
   const errorCount = results.filter(r => r.status === 'error').length;
@@ -173,6 +181,11 @@ export default function BulkInvite() {
               </div>
             )}
 
+            {isLegacy && rows.length > 0 && (
+              <div style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.4)', borderRadius: '8px', padding: '10px 14px', color: '#c9a84c', fontSize: '12px', marginBottom: '16px', lineHeight: 1.5 }}>
+                🔗 Legacy subscriber data detected. These members will be granted their tier + active status and linked to their existing Stripe subscription — they will <strong>not</strong> be charged again.
+              </div>
+            )}
             {rows.length > 0 && !results.length && (
               <>
                 <div style={{ marginBottom: '14px' }}>

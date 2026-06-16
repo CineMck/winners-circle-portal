@@ -95,11 +95,16 @@ export async function POST(request: NextRequest) {
     case 'customer.subscription.updated': {
       const subscription = event.data.object as Stripe.Subscription;
       const priceId = subscription.items.data[0]?.price.id;
-      const tier = TIER_MAP[priceId] || 'core';
-      await supabase.from('profiles').update({
-        subscription_status: subscription.status,
-        tier: subscription.status === 'active' ? tier : 'free',
-      }).eq('stripe_subscription_id', subscription.id);
+      const knownTier = TIER_MAP[priceId]; // undefined for legacy / externally-created prices
+      const patch: Record<string, unknown> = { subscription_status: subscription.status };
+      if (subscription.status === 'active') {
+        // Only change tier for prices we recognize. Legacy/grandfathered members
+        // on external prices keep the tier they were imported with — never downgrade.
+        if (knownTier) patch.tier = knownTier;
+      } else {
+        patch.tier = 'free';
+      }
+      await supabase.from('profiles').update(patch).eq('stripe_subscription_id', subscription.id);
       break;
     }
     case 'customer.subscription.deleted': {

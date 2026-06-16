@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { email, tier, message, inviterName, name } = await req.json();
+    const { email, tier, message, inviterName, name, stripeCustomerId, stripeSubscriptionId, subscriptionStatus } = await req.json();
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -152,6 +152,25 @@ export async function POST(req: NextRequest) {
     });
 
     if (linkError) {
+      // If the user already exists, grandfather their existing profile instead of
+      // failing — keeps the legacy import idempotent and handles members who
+      // already created a portal account.
+      const msg = (linkError.message || '').toLowerCase();
+      const grandfather = !!(stripeCustomerId || stripeSubscriptionId || subscriptionStatus || (tier && tier !== 'free') || name);
+      if (msg.includes('already') && grandfather) {
+        const { data: existing } = await supabaseAdmin
+          .from('profiles').select('id').eq('email', email).maybeSingle();
+        if (existing?.id) {
+          await supabaseAdmin.from('profiles').update({
+            ...(tier && tier !== 'free' ? { tier } : {}),
+            ...(stripeCustomerId ? { stripe_customer_id: stripeCustomerId } : {}),
+            ...(stripeSubscriptionId ? { stripe_subscription_id: stripeSubscriptionId } : {}),
+            ...(subscriptionStatus ? { subscription_status: subscriptionStatus } : {}),
+            ...(name ? { full_name: String(name).trim() } : {}),
+          }).eq('id', existing.id);
+          return NextResponse.json({ success: true, updated: true });
+        }
+      }
       console.error('Supabase invite link error:', linkError);
       return NextResponse.json({ error: linkError.message }, { status: 500 });
     }
@@ -165,11 +184,15 @@ export async function POST(req: NextRequest) {
     // (will be overwritten by the profile trigger on signup if needed)
     const userId = linkData?.user?.id;
     const fullName = (name && String(name).trim()) || email.split('@')[0];
-    if (userId && (name || (tier && tier !== 'free'))) {
+    const hasGrandfather = !!(stripeCustomerId || stripeSubscriptionId || subscriptionStatus);
+    if (userId && (name || hasGrandfather || (tier && tier !== 'free'))) {
       await supabaseAdmin.from('profiles').upsert({
         id: userId,
         email,
         ...(tier && tier !== 'free' ? { tier } : {}),
+        ...(stripeCustomerId ? { stripe_customer_id: stripeCustomerId } : {}),
+        ...(stripeSubscriptionId ? { stripe_subscription_id: stripeSubscriptionId } : {}),
+        ...(subscriptionStatus ? { subscription_status: subscriptionStatus } : {}),
         role: 'member',
         full_name: fullName,
         username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_'),
