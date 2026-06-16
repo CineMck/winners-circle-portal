@@ -236,7 +236,7 @@ export default function SignupPage() {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '24px', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
     }}>
-      <div style={{ width: '100%', maxWidth: stage === 'tier' ? '800px' : '460px' }}>
+      <div style={{ width: '100%', maxWidth: stage === 'tier' ? '1100px' : '460px' }}>
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
