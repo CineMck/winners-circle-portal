@@ -129,8 +129,8 @@ export default function MemberProgressOverview({ members }: { members: MemberSta
           style={{ background: 'var(--black-card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '9px 14px', color: 'var(--text)', fontSize: '13px', cursor: 'pointer' }}
         >
           <option value="all">All Tiers</option>
-          <option value="founding">Founding</option>
-          <option value="elite">Elite</option>
+          <option value="founding">1-1 Elite</option>
+          <option value="elite">Elevate</option>
           <option value="core">Core</option>
           <option value="free">Free</option>
         </select>

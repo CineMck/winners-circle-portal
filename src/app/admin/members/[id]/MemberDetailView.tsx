@@ -641,8 +641,8 @@ function BillingTab({ profile }: { profile: Profile }) {
                 <Label>Comp Tier</Label>
                 <select value={compTier} onChange={e => setCompTier(e.target.value as MemberTier)} style={inp}>
                   <option value="core">Core</option>
-                  <option value="elite">Elite</option>
-                  <option value="founding">Founding</option>
+                  <option value="elite">Elevate</option>
+                  <option value="founding">1-1 Elite</option>
                 </select>
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontSize: '13px', color: '#ccc', padding: '10px', background: '#1a1a1a', borderRadius: '8px' }}>

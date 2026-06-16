@@ -268,8 +268,8 @@ export default function CoursesAdmin({ courses: initial, adminId }: { courses: C
               <select style={inputStyle} value={courseForm.tier_required} onChange={e => setCourseForm({ ...courseForm, tier_required: e.target.value })}>
                 <option value="free">Free (all members)</option>
                 <option value="core">Core+</option>
-                <option value="elite">Elite+</option>
-                <option value="founding">Founding Only</option>
+                <option value="elite">Elevate+</option>
+                <option value="founding">1-1 Elite Only</option>
               </select>
             </div>
             <div>

@@ -106,8 +106,8 @@ export default function ChallengesAdmin({ challenges: initial, adminId }: { chal
               <select style={inputStyle} value={form.tier_required} onChange={e => setForm({...form, tier_required: e.target.value as MemberTier})}>
                 <option value="free">Free</option>
                 <option value="core">Core+</option>
-                <option value="elite">Elite+</option>
-                <option value="founding">Founding Only</option>
+                <option value="elite">Elevate+</option>
+                <option value="founding">1-1 Elite Only</option>
               </select>
             </div>
             <div>
