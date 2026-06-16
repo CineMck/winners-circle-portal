@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { email, tier, message, inviterName } = await req.json();
+    const { email, tier, message, inviterName, name } = await req.json();
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
@@ -164,13 +164,14 @@ export async function POST(req: NextRequest) {
     // Pre-create the profile record with the desired tier
     // (will be overwritten by the profile trigger on signup if needed)
     const userId = linkData?.user?.id;
-    if (userId && tier && tier !== 'free') {
+    const fullName = (name && String(name).trim()) || email.split('@')[0];
+    if (userId && (name || (tier && tier !== 'free'))) {
       await supabaseAdmin.from('profiles').upsert({
         id: userId,
         email,
-        tier,
+        ...(tier && tier !== 'free' ? { tier } : {}),
         role: 'member',
-        full_name: email.split('@')[0],
+        full_name: fullName,
         username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_'),
       }, { onConflict: 'id', ignoreDuplicates: false });
     }

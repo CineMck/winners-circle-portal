@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Profile, MemberTier, UserRole, getTierColor, getTierLabel } from '@/types';
+import BulkInvite from '@/components/admin/BulkInvite';
 
 export default function MembersAdmin({ initialMembers }: { initialMembers: Profile[] }) {
   const [members, setMembers] = useState<Profile[]>(initialMembers);
@@ -156,10 +157,13 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
     <div style={{ padding: '32px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 800 }}>👥 Members ({filtered.length})</h1>
-        <button className="btn-gold" style={{ padding: '10px 20px', fontSize: '13px' }}
-          onClick={() => { setShowInviteModal(true); setInviteResult(null); }}>
-          + Add Member
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <BulkInvite />
+          <button className="btn-gold" style={{ padding: '10px 20px', fontSize: '13px' }}
+            onClick={() => { setShowInviteModal(true); setInviteResult(null); }}>
+            + Add Member
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -380,7 +384,7 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
               {inviteResult?.success && !inviteResult.warning && (
                 <div style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid #22c55e', borderRadius: '8px', padding: '12px 16px' }}>
                   <div style={{ color: '#22c55e', fontWeight: 700, fontSize: '14px' }}>✅ Invite sent to {inviteEmail}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>They'll receive a branded email with a sign-up link.</div>
+                  <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>They&apos;ll receive a branded email with a sign-up link.</div>
                 </div>
               )}
 
