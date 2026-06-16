@@ -1,29 +1,30 @@
 'use client';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import InstallApp from '@/components/InstallApp';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [magicSent, setMagicSent] = useState(false);
 
   const supabase = createClient();
   const searchParams = useSearchParams();
 
-  // Surface any error reason from /auth/callback redirects
-  useEffect(() => {
+  // Surface any error reason from /auth/callback redirects (computed once at mount).
+  const [error, setError] = useState(() => {
     const errParam = searchParams.get('error');
     const reason = searchParams.get('reason');
     if (errParam) {
       const decoded = reason ? decodeURIComponent(reason) : 'Authentication failed';
-      setError(`${errParam === 'auth_callback_failed' ? 'Sign-in link issue' : errParam}: ${decoded}`);
+      return `${errParam === 'auth_callback_failed' ? 'Sign-in link issue' : errParam}: ${decoded}`;
     }
-  }, [searchParams]);
+    return '';
+  });
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -140,6 +141,8 @@ function LoginForm() {
             </form>
           )}
         </div>
+
+        <InstallApp />
 
         <p style={{ textAlign: 'center', marginTop: '24px', color: 'var(--muted)', fontSize: '14px' }}>
           Not a member?{' '}

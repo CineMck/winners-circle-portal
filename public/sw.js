@@ -1,4 +1,4 @@
-// Winners Circle Service Worker — Push Notifications
+// Winners Circle Service Worker — Push Notifications + PWA install support
 
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
@@ -31,3 +31,12 @@ self.addEventListener('notificationclick', (event) => {
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(clients.claim()));
+
+// Minimal fetch handler so the app qualifies as an installable PWA. Only page
+// navigations (HTML) are intercepted; everything else — static assets, video
+// range requests, API calls — passes straight through to the network untouched.
+self.addEventListener('fetch', (event) => {
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+  }
+});

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Cinzel } from 'next/font/google';
 import './globals.css';
 import MetaPixel from '@/components/MetaPixel';
+import PWARegister from '@/components/PWARegister';
 
 // Brand wordmark font — Trajan-style Roman capitals, matches the Winners
 // Circle logo treatment. Loaded as a CSS variable for use in selected
@@ -16,6 +17,12 @@ const cinzel = Cinzel({
 export const metadata: Metadata = {
   title: "Winner's Circle | Members Portal",
   description: "The exclusive mastermind community for high-performers.",
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Winners Circle',
+  },
 };
 
 // viewport-fit=cover is required for env(safe-area-inset-*) to return
@@ -34,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={cinzel.variable}>
       <body>
         <MetaPixel />
+        <PWARegister />
         {children}
       </body>
     </html>
