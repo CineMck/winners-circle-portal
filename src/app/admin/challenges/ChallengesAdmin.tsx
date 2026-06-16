@@ -14,8 +14,6 @@ export default function ChallengesAdmin({ challenges: initial, adminId }: { chal
     // Progress tracking
     duration_days: '' as string | number,
     daily_tasks: [] as string[],
-    target_metric: '',
-    metric_unit: '',
     completion_threshold: 80,
   });
   const [newTask, setNewTask] = useState('');
@@ -48,8 +46,6 @@ export default function ChallengesAdmin({ challenges: initial, adminId }: { chal
       instructions_video_url: form.instructions_video_url || null,
       duration_days: form.duration_days ? Number(form.duration_days) : null,
       daily_tasks: form.daily_tasks,
-      target_metric: form.target_metric || null,
-      metric_unit: form.metric_unit || null,
       completion_threshold: form.completion_threshold,
       is_active: true,
       created_by: adminId,
@@ -61,7 +57,7 @@ export default function ChallengesAdmin({ challenges: initial, adminId }: { chal
       title: '', description: '', tier_required: 'free', xp_reward: 100,
       badge_name: '', badge_icon: '', is_evergreen: true, start_date: '', end_date: '',
       instructions_video_url: '', duration_days: '', daily_tasks: [],
-      target_metric: '', metric_unit: '', completion_threshold: 80,
+      completion_threshold: 80,
     });
   }
 
@@ -159,15 +155,6 @@ export default function ChallengesAdmin({ challenges: initial, adminId }: { chal
                   <label style={labelStyle}>Completion Threshold <span style={{ color: 'var(--muted)', fontWeight: 400 }}>% of days required</span></label>
                   <input type="number" style={inputStyle} value={form.completion_threshold} onChange={e => setForm({...form, completion_threshold: Number(e.target.value)})} min={1} max={100} />
                 </div>
-              </div>
-            </div>
-
-            {/* Daily Metric */}
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>Metric to Track <span style={{ color: 'var(--muted)', fontWeight: 400 }}>— optional (e.g. "Pushups completed")</span></label>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '10px' }}>
-                <input style={inputStyle} value={form.target_metric} onChange={e => setForm({...form, target_metric: e.target.value})} placeholder="Pushups completed" />
-                <input style={inputStyle} value={form.metric_unit} onChange={e => setForm({...form, metric_unit: e.target.value})} placeholder="reps" />
               </div>
             </div>
 
