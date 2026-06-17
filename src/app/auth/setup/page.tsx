@@ -57,7 +57,20 @@ export default function SetupPage() {
 
   useEffect(() => {
     const check = async () => {
-      await new Promise(r => setTimeout(r, 800));
+      // Invite links land here with the session in the URL hash
+      // (#access_token=…&refresh_token=…). The @supabase/ssr browser client does
+      // not auto-consume implicit hash tokens, so establish the session manually
+      // — otherwise getSession() is empty and a valid invite looks "expired".
+      if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
+        const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+        if (access_token && refresh_token) {
+          await supabase.auth.setSession({ access_token, refresh_token });
+        }
+        // Strip the tokens from the URL so they aren't left in browser history.
+        window.history.replaceState(null, '', window.location.pathname);
+      }
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const emailName = session.user.email?.split('@')[0] || '';
@@ -68,7 +81,7 @@ export default function SetupPage() {
       }
     };
     check();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleStep1(e: React.FormEvent) {
     e.preventDefault();
