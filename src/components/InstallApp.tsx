@@ -7,6 +7,12 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+// Optional walkthrough videos shown in the install steps. Paste a YouTube / Vimeo
+// / Loom link (use the same one for both if it's a single video). Leave blank to
+// hide the "Watch the setup video" link.
+const IOS_TUTORIAL_URL: string = '/install-guide';
+const ANDROID_TUTORIAL_URL: string = '/install-guide';
+
 // "Get the app" block for the login screen — lets members install the PWA on
 // iPhone (Add to Home Screen) or Android (native install prompt). No app store.
 export default function InstallApp() {
@@ -66,18 +72,34 @@ export default function InstallApp() {
       </div>
 
       {help === 'ios' && (
-        <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--muted)', lineHeight: 1.6 }}>
-          On your iPhone, open this page in <strong style={{ color: 'var(--text)' }}>Safari</strong>, tap the
-          {' '}<strong style={{ color: 'var(--text)' }}>Share</strong> icon, then choose
-          {' '}<strong style={{ color: 'var(--text)' }}>“Add to Home Screen.”</strong>
-        </p>
+        <div style={{ marginTop: '12px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.6, margin: 0 }}>
+            On your iPhone, open this page in <strong style={{ color: 'var(--text)' }}>Safari</strong>, tap the
+            {' '}<strong style={{ color: 'var(--text)' }}>Share</strong> icon, then choose
+            {' '}<strong style={{ color: 'var(--text)' }}>“Add to Home Screen.”</strong>
+          </p>
+          {IOS_TUTORIAL_URL ? (
+            <a href={IOS_TUTORIAL_URL} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'inline-block', marginTop: '8px', color: 'var(--gold)', fontWeight: 700, fontSize: '12px' }}>
+▶ See the step-by-step install guide
+            </a>
+          ) : null}
+        </div>
       )}
       {help === 'android' && (
-        <p style={{ marginTop: '12px', fontSize: '12px', color: 'var(--muted)', lineHeight: 1.6 }}>
-          On your Android phone, open this page in <strong style={{ color: 'var(--text)' }}>Chrome</strong>, tap the
-          {' '}<strong style={{ color: 'var(--text)' }}>⋮ menu</strong>, then choose
-          {' '}<strong style={{ color: 'var(--text)' }}>“Install app.”</strong>
-        </p>
+        <div style={{ marginTop: '12px' }}>
+          <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.6, margin: 0 }}>
+            On your Android phone, open this page in <strong style={{ color: 'var(--text)' }}>Chrome</strong>, tap the
+            {' '}<strong style={{ color: 'var(--text)' }}>⋮ menu</strong>, then choose
+            {' '}<strong style={{ color: 'var(--text)' }}>“Install app.”</strong>
+          </p>
+          {ANDROID_TUTORIAL_URL ? (
+            <a href={ANDROID_TUTORIAL_URL} target="_blank" rel="noopener noreferrer"
+              style={{ display: 'inline-block', marginTop: '8px', color: 'var(--gold)', fontWeight: 700, fontSize: '12px' }}>
+▶ See the step-by-step install guide
+            </a>
+          ) : null}
+        </div>
       )}
 
       {/* Hidden automatically when already installed (running as a standalone app). */}

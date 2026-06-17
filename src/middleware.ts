@@ -44,6 +44,7 @@ export async function middleware(request: NextRequest) {
     '/auth/reset',
     '/privacy',
     '/terms',
+    '/install-guide',
     '/real-estate',
     '/api/real-estate/register',
     '/unsubscribe',
