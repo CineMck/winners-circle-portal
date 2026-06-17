@@ -38,19 +38,19 @@ export default function ChannelView({ channel, profile, initialPosts, allChannel
   const channelIcons: Record<string, string> = { hash: '#', trophy: '🏆', target: '🎯', 'book-open': '📖', flame: '🔥', crown: '👑' };
 
   return (
-    <div style={{ maxWidth: '800px' }}>
+    <div className="channel-layout" style={{ display: 'flex', alignItems: 'flex-start' }}>
 
-      {/* ── Channel Tab Bar (desktop only) ─────────────────────── */}
-      <div className="channel-tab-bar" style={{
-        position: 'sticky', top: 'var(--topbar-h)',
-        background: 'var(--black-bg)',
-        borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center',
-        overflowX: 'auto', overflowY: 'hidden',
-        gap: '2px', padding: '0 24px',
-        zIndex: 10,
-        scrollbarWidth: 'none',
+      {/* ── Channel list — vertical sidebar (desktop) ──────────── */}
+      <nav className="channel-side" style={{
+        width: '210px', flexShrink: 0,
+        position: 'sticky', top: 'var(--topbar-h)', alignSelf: 'flex-start',
+        maxHeight: 'calc(100vh - var(--topbar-h))', overflowY: 'auto',
+        borderRight: '1px solid var(--border)',
+        padding: '18px 8px',
       }}>
+        <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--muted)', letterSpacing: '1px', padding: '0 10px 10px' }}>
+          CHANNELS
+        </div>
         {allChannels.map(ch => {
           const chAccess = canAccessTier(profile?.tier || 'free', ch.tier_required);
           const active = ch.slug === channel.slug;
@@ -59,30 +59,28 @@ export default function ChannelView({ channel, profile, initialPosts, allChannel
               key={ch.id}
               href={chAccess ? `/community/${ch.slug}` : '/upgrade'}
               style={{
-                display: 'flex', alignItems: 'center', gap: '5px',
-                padding: '12px 14px',
-                borderBottom: `2px solid ${active ? 'var(--gold)' : 'transparent'}`,
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '9px 10px', borderRadius: '8px', marginBottom: '2px',
+                background: active ? 'var(--gold-dim)' : 'transparent',
+                border: `1px solid ${active ? 'var(--gold)' : 'transparent'}`,
                 color: active ? 'var(--gold)' : chAccess ? 'var(--text)' : 'var(--muted)',
                 fontWeight: active ? 700 : 500,
-                fontSize: '13px',
+                fontSize: '14px',
                 textDecoration: 'none',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-                opacity: chAccess ? 1 : 0.45,
-                transition: 'color 0.15s, border-color 0.15s',
+                opacity: chAccess ? 1 : 0.5,
+                transition: 'all 0.15s',
               }}
             >
-              <span style={{ color: active ? 'var(--gold)' : 'var(--muted)', fontSize: '12px' }}>#</span>
-              {ch.name.toLowerCase()}
-              {!chAccess && <span style={{ fontSize: '10px', marginLeft: '2px' }}>🔒</span>}
+              <span style={{ color: active ? 'var(--gold)' : 'var(--muted)', fontSize: '13px' }}>#</span>
+              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.name.toLowerCase()}</span>
+              {!chAccess && <span style={{ fontSize: '11px' }}>🔒</span>}
             </Link>
           );
         })}
-        <style>{`.channel-tab-bar::-webkit-scrollbar { display: none; }`}</style>
-      </div>
+      </nav>
 
       {/* ── Content ─────────────────────────────────────────────── */}
-      <div style={{ padding: '24px' }}>
+      <div style={{ flex: 1, minWidth: 0, maxWidth: '820px', padding: '24px' }}>
 
         {!hasAccess ? (
           <div style={{ padding: '48px 24px', textAlign: 'center', maxWidth: '500px', margin: '0 auto' }}>
@@ -155,10 +153,11 @@ export default function ChannelView({ channel, profile, initialPosts, allChannel
         )}
       </div>
 
-      {/* Desktop: hide channel tab bar on mobile (mobile already has sub-nav in PortalShell) */}
+      {/* Mobile already has the channel sub-nav in PortalShell, so hide the side list there. */}
       <style>{`
         @media (max-width: 900px) {
-          .channel-tab-bar { display: none !important; }
+          .channel-side { display: none !important; }
+          .channel-layout { display: block !important; }
         }
       `}</style>
     </div>
