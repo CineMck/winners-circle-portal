@@ -47,7 +47,7 @@ function buildInviteEmail({
 
         <!-- Header -->
         <tr><td style="text-align:center;padding-bottom:32px;">
-          <div style="font-size:32px;margin-bottom:8px;">🏆</div>
+          <img src="https://winnerscircleportal.com/logo.png" width="64" height="70" alt="The Winner's Circle" style="display:inline-block;margin-bottom:10px;" />
           <h1 style="margin:0;font-size:24px;font-weight:800;color:#c9a84c;letter-spacing:-0.5px;">
             The Winner's Circle
           </h1>
@@ -104,14 +104,34 @@ function buildInviteEmail({
             This invite link expires in 24 hours.
           </p>
 
-          <!-- How to access your account -->
-          <div style="border-top:1px solid #1e1e1e;margin-top:28px;padding-top:24px;">
-            <p style="margin:0 0 10px;font-size:14px;color:#cccccc;line-height:1.6;">
-              After you set up your account, log in anytime at
-              <a href="https://winnerscircleportal.com" style="color:#c9a84c;text-decoration:none;font-weight:700;">winnerscircleportal.com</a>.
+          <!-- Get the app -->
+          <div style="border-top:1px solid #1e1e1e;margin-top:28px;padding-top:28px;text-align:center;">
+            <h3 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#c9a84c;">Get the App on your Home Screen!</h3>
+            <p style="margin:0 0 18px;font-size:14px;color:#cccccc;line-height:1.6;">
+              Add The Winner's Circle to your phone — it opens like a real app, no app store needed.
             </p>
-            <p style="margin:0;font-size:14px;color:#cccccc;line-height:1.6;">
-              📱 Want it on your phone? <a href="https://winnerscircleportal.com/install-guide" style="color:#c9a84c;text-decoration:none;font-weight:700;">Add the app to your home screen</a> — quick step-by-step instructions for iPhone &amp; Android.
+            <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 18px;">
+              <tr>
+                <td style="padding:0 18px;text-align:center;">
+                  <a href="https://winnerscircleportal.com/install-guide" style="text-decoration:none;">
+                    <img src="https://winnerscircleportal.com/apple-logo.png" width="40" height="40" alt="iPhone" style="display:block;margin:0 auto 6px;" />
+                    <span style="font-size:12px;color:#888;">iPhone &amp; iPad</span>
+                  </a>
+                </td>
+                <td style="padding:0 18px;text-align:center;">
+                  <a href="https://winnerscircleportal.com/install-guide" style="text-decoration:none;">
+                    <img src="https://winnerscircleportal.com/android-logo.png" width="40" height="40" alt="Android" style="display:block;margin:0 auto 6px;" />
+                    <span style="font-size:12px;color:#888;">Android</span>
+                  </a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0 0 14px;font-size:14px;line-height:1.6;">
+              <a href="https://winnerscircleportal.com/install-guide" style="color:#c9a84c;text-decoration:none;font-weight:700;">See the step-by-step instructions →</a>
+            </p>
+            <p style="margin:0;font-size:13px;color:#888;line-height:1.6;">
+              Prefer the web? Log in anytime at
+              <a href="https://winnerscircleportal.com" style="color:#c9a84c;text-decoration:none;font-weight:700;">winnerscircleportal.com</a>.
             </p>
           </div>
 
