@@ -27,6 +27,8 @@ const getHomeGlobals = unstable_cache(
         .select('*, author:profiles!author_id(*), channel:channels(*), challenge:challenges(*)')
         .in('author_id', adminIds)
         .eq('is_removed', false)
+        .is('channel_id', null)
+        .is('challenge_id', null)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(30);
