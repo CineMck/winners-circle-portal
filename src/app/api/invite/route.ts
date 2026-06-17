@@ -104,6 +104,17 @@ function buildInviteEmail({
             This invite link expires in 24 hours.
           </p>
 
+          <!-- How to access your account -->
+          <div style="border-top:1px solid #1e1e1e;margin-top:28px;padding-top:24px;">
+            <p style="margin:0 0 10px;font-size:14px;color:#cccccc;line-height:1.6;">
+              After you set up your account, log in anytime at
+              <a href="https://winnerscircleportal.com" style="color:#c9a84c;text-decoration:none;font-weight:700;">winnerscircleportal.com</a>.
+            </p>
+            <p style="margin:0;font-size:14px;color:#cccccc;line-height:1.6;">
+              📱 Want it on your phone? <a href="https://winnerscircleportal.com/install-guide" style="color:#c9a84c;text-decoration:none;font-weight:700;">Add the app to your home screen</a> — quick step-by-step instructions for iPhone &amp; Android.
+            </p>
+          </div>
+
         </td></tr>
 
         <!-- Footer -->
