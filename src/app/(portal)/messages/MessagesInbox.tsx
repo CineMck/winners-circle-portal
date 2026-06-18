@@ -117,6 +117,25 @@ export default function MessagesInbox({ profile, conversations, members, isAdmin
     }
   }
 
+  async function createTierGroup(tier: string) {
+    setCreatingGroup(true);
+    setGroupError('');
+    try {
+      const res = await fetch('/api/admin/tier-groups', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        const g = (data.groups || []).find((x: { tier: string; group_id: string }) => x.tier === tier);
+        if (g?.group_id) { router.push(`/messages/${g.group_id}`); return; }
+        setGroupError('Group created but could not open it.');
+      } else {
+        setGroupError(data.error || 'Could not create tier group. Has the tier_groups SQL been run?');
+      }
+    } catch {
+      setGroupError('Network error creating tier group.');
+    }
+    setCreatingGroup(false);
+  }
+
   async function createGroup() {
     if (creatingGroup) return;
     setGroupError('');
@@ -199,6 +218,21 @@ export default function MessagesInbox({ profile, conversations, members, isAdmin
             <p style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '8px', fontWeight: 600 }}>
               {mode === 'newGroup' ? 'CREATE A GROUP MESSAGE' : 'START A CONVERSATION'}
             </p>
+            {mode === 'newGroup' && isAdmin && (
+              <div style={{ marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border)' }}>
+                <p style={{ fontSize: '11px', color: 'var(--muted)', margin: '0 0 8px' }}>
+                  Auto-synced tier groups — members are added &amp; removed by tier:
+                </p>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {[{ t: 'core', l: 'Core' }, { t: 'elite', l: 'Elevate' }, { t: 'founding', l: '1-1 Elite' }].map(x => (
+                    <button key={x.t} type="button" onClick={() => createTierGroup(x.t)} disabled={creatingGroup}
+                      style={{ flex: 1, padding: '8px 4px', fontSize: '12px', fontWeight: 700, borderRadius: '8px', cursor: creatingGroup ? 'not-allowed' : 'pointer', background: 'var(--gold-dim)', border: '1px solid var(--gold)', color: 'var(--gold)' }}>
+                      {x.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {mode === 'newGroup' && (
               <input
                 value={groupName} onChange={e => setGroupName(e.target.value)}
