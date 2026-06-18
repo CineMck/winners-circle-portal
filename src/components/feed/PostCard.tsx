@@ -136,7 +136,7 @@ export default function PostCard({ post, currentUser, onPin, onRemove }: Props) 
           <div>
             <div style={{ fontSize: '14px', fontWeight: 700 }}>{author?.full_name}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', color: tierColor, fontWeight: 600 }}>
+              <span className="tier-label" style={{ fontSize: '11px', color: tierColor, fontWeight: 600 }}>
                 {getTierLabel(author?.tier || 'free')}
               </span>
               <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{formatDate(post.created_at)}</span>

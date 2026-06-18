@@ -193,7 +193,7 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
                 <h1 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '4px' }}>{profile?.full_name}</h1>
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
-                <span style={{ fontSize: '13px', color: tierColor, fontWeight: 700, border: `1px solid ${tierColor}`, padding: '2px 8px', borderRadius: '20px' }}>
+                <span className="tier-label" style={{ fontSize: '13px', color: tierColor, fontWeight: 700, border: `1px solid ${tierColor}`, padding: '2px 8px', borderRadius: '20px' }}>
                   {getTierLabel(profile?.tier || 'free')}
                 </span>
                 <span style={{ fontSize: '13px', color: 'var(--muted)' }}>@{profile?.username}</span>

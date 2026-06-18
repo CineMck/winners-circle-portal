@@ -6,6 +6,7 @@ import { Profile, Channel, canAccessTier, canAccessGroup, AccessGroup, getTierCo
 import { createClient } from '@/lib/supabase/client';
 import NotificationBell from './NotificationBell';
 import PushNotificationSetup from '@/components/PushNotificationSetup';
+import TierVisibility from '@/components/TierVisibility';
 import NativePushBootstrap from '@/components/NativePushBootstrap';
 import Logo from '@/components/Logo';
 
@@ -86,7 +87,7 @@ export default function PortalShell({ profile, channels, children }: Props) {
             </div>
             <div style={{ display: 'none' }} className="desktop-only">
               <div style={{ fontSize: '13px', fontWeight: 600, lineHeight: 1 }}>{profile?.full_name}</div>
-              <div style={{ fontSize: '11px', color: tierColor, marginTop: '2px' }}>
+              <div className="tier-label" style={{ fontSize: '11px', color: tierColor, marginTop: '2px' }}>
                 {getTierLabel(profile?.tier || 'free')}
               </div>
             </div>
@@ -215,7 +216,7 @@ export default function PortalShell({ profile, channels, children }: Props) {
               <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {profile?.full_name}
               </div>
-              <div style={{ fontSize: '11px', color: tierColor }}>{getTierLabel(profile?.tier || 'free')}</div>
+              <div className="tier-label" style={{ fontSize: '11px', color: tierColor }}>{getTierLabel(profile?.tier || 'free')}</div>
             </div>
           </div>
           {profile?.tier !== 'founding' && (
@@ -259,8 +260,11 @@ export default function PortalShell({ profile, channels, children }: Props) {
 
       <PushNotificationSetup />
       <NativePushBootstrap />
+      <TierVisibility role={profile?.role} />
 
       <style>{`
+        /* Hide member tier labels (the text under names) from non-staff members. */
+        body.hide-tiers .tier-label, body.hide-tiers .tier-badge { display: none !important; }
         @media (max-width: 900px) {
           .sidebar { display: none !important; }
           .main-content { margin-left: 0 !important; padding-top: calc(var(--topbar-h) + var(--mobile-nav-h)) !important; }

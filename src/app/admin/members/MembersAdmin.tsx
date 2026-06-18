@@ -27,6 +27,7 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
   const [inviteMessage, setInviteMessage] = useState('');
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteResult, setInviteResult] = useState<{ success?: boolean; error?: string; manualLink?: string; warning?: string } | null>(null);
+  const [syncingGroups, setSyncingGroups] = useState(false);
 
   const filtered = members.filter(m => {
     const matchesSearch = !search || m.full_name?.toLowerCase().includes(search.toLowerCase()) || m.email?.toLowerCase().includes(search.toLowerCase());
@@ -113,6 +114,24 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
     setConfirmRemoveId(null);
   }
 
+  async function syncTierGroups() {
+    if (!confirm('Create / sync the tier message groups (Core, Elevate, 1-1 Elite) and add current members to each?')) return;
+    setSyncingGroups(true);
+    try {
+      const res = await fetch('/api/admin/tier-groups', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        const summary = (data.groups || []).map((g: { tier: string; members: number }) => `${g.tier}: ${g.members}`).join('  ·  ');
+        alert(`Tier groups synced ✓\n${summary}`);
+      } else {
+        alert(`Failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch {
+      alert('Network error syncing tier groups.');
+    }
+    setSyncingGroups(false);
+  }
+
   async function sendInvite() {
     if (!inviteEmail.trim()) return;
     setInviteSending(true);
@@ -158,6 +177,10 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 800 }}>👥 Members ({filtered.length})</h1>
         <div style={{ display: 'flex', gap: '10px' }}>
+          <button className="btn-outline" style={{ padding: '10px 20px', fontSize: '13px' }}
+            onClick={syncTierGroups} disabled={syncingGroups}>
+            {syncingGroups ? 'Syncing…' : '👥 Sync Tier Groups'}
+          </button>
           <BulkInvite />
           <button className="btn-gold" style={{ padding: '10px 20px', fontSize: '13px' }}
             onClick={() => { setShowInviteModal(true); setInviteResult(null); }}>

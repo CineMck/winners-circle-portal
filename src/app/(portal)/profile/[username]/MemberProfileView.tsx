@@ -67,7 +67,7 @@ export default function MemberProfileView({ currentUserId, member, recentPosts, 
             <div>
               <h1 style={{ fontSize: '22px', fontWeight: 800, marginBottom: '4px' }}>{member.full_name}</h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                <span style={{ fontSize: '13px', color: tierColor, fontWeight: 700, border: `1px solid ${tierColor}`, padding: '2px 8px', borderRadius: '20px' }}>
+                <span className="tier-label" style={{ fontSize: '13px', color: tierColor, fontWeight: 700, border: `1px solid ${tierColor}`, padding: '2px 8px', borderRadius: '20px' }}>
                   {getTierLabel(member.tier as 'free' | 'core' | 'elite' | 'founding')}
                 </span>
                 <span style={{ fontSize: '13px', color: 'var(--muted)' }}>@{member.username}</span>
