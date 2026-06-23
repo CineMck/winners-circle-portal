@@ -16,7 +16,10 @@ interface Props {
   onPostCreated?: (post: unknown) => void;
 }
 
-const MAX_FILE_SIZE_MB = 50;
+// Videos upload to Mux (handles large files), so they get a generous cap.
+// Images go direct to the Supabase 'media' bucket, which is limited to 50MB.
+const MAX_VIDEO_SIZE_MB = 500;
+const MAX_IMAGE_SIZE_MB = 50;
 
 interface MediaItem {
   file: File;
@@ -49,9 +52,16 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
-    const oversized = files.filter(f => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
+    const oversized = files.filter(f => {
+      const limitMb = f.type.startsWith('video/') ? MAX_VIDEO_SIZE_MB : MAX_IMAGE_SIZE_MB;
+      return f.size > limitMb * 1024 * 1024;
+    });
     if (oversized.length > 0) {
-      setPostError(`File too large: ${oversized.map(f => f.name).join(', ')} (max ${MAX_FILE_SIZE_MB}MB)`);
+      const names = oversized.map(f => {
+        const limitMb = f.type.startsWith('video/') ? MAX_VIDEO_SIZE_MB : MAX_IMAGE_SIZE_MB;
+        return `${f.name} (max ${limitMb}MB)`;
+      });
+      setPostError(`File too large: ${names.join(', ')}`);
       return;
     }
     setPostError(null);
