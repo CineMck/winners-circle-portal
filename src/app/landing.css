@@ -946,6 +946,15 @@
       margin-bottom: 10px;
     }
     .lp .p-price-wrap { margin-bottom: 6px; }
+    .lp .p-was {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      color: var(--text-3);
+      text-decoration: line-through;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
     .lp .p-price {
       font-size: 56px;
       font-weight: 900;

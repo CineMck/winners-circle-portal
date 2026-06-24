@@ -664,23 +664,21 @@ export default function LandingClient() {
           <div className="pricing-header">
             <div className="section-eyebrow reveal">Membership</div>
             <h2 className="section-title reveal d1">Choose your level<br />of <span className="gold">commitment</span>.</h2>
-            <p className="section-sub reveal d2" style={{ margin: '0 auto' }}>Start free. Scale when you&apos;re ready. No contracts — cancel anytime.</p>
+            <p className="section-sub reveal d2" style={{ margin: '0 auto' }}>Start for $19.95. Scale when you&apos;re ready. No contracts — cancel anytime.</p>
           </div>
           <div className="pricing-grid">
 
-            {/* FREE */}
+            {/* STARTER */}
             <div className="p-card reveal">
-              <div className="p-tier">Free</div>
-              <div className="p-price-wrap"><span className="p-price"><sup>$</sup>0</span></div>
-              <div className="p-period">Forever free &nbsp;·&nbsp; Unlimited seats</div>
+              <div className="p-tier">Starter</div>
+              <div className="p-price-wrap"><span className="p-was">$50</span><span className="p-price"><sup>$</sup>19.95</span></div>
+              <div className="p-period">/ month &nbsp;·&nbsp; Cancel anytime</div>
               <div className="p-divider" />
               <ul className="p-features">
                 <li><span className="pf-check">✦</span> 2 weekly Zoom lessons per month with John</li>
-                <li><span className="pf-check">✦</span> Access to private Facebook community</li>
-                <li><span className="pf-check">✦</span> Member referral and connection network</li>
-                <li><span className="pf-check">✦</span> Live Monday sessions at 6:30pm ET</li>
+                <li><span className="pf-check">✦</span> Full access to the Winners Circle App and community</li>
               </ul>
-              <Link href="/signup" className="p-cta">Join for Free</Link>
+              <Link href="/signup" className="p-cta">Join Now</Link>
             </div>
 
             {/* ELEVATE — FEATURED */}
