@@ -226,7 +226,7 @@ export default function MemberProgressOverview({ members }: { members: MemberSta
                       {m.totalCheckins > 0 ? m.totalCheckins : '—'}
                     </td>
                     {/* 30-day activity */}
-                    <td style={{ padding: '14px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '14px', maxWidth: 160 }}>
                       {m.activity30 > 0 ? (
                         <div>
                           <div style={{ fontSize: '14px', fontWeight: 700, color: '#22c55e' }}>{m.activity30}</div>

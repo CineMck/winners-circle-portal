@@ -146,7 +146,9 @@ export default function AdminShell({ profile, children }: { profile: Profile; ch
       </aside>
 
       {/* Main */}
-      <main className="admin-main" style={{ marginLeft: '220px', flex: 1, padding: '0' }}>
+      {/* minWidth: 0 lets wide tables scroll inside their own overflow
+          containers instead of stretching the page past the viewport. */}
+      <main className="admin-main" style={{ marginLeft: '220px', flex: 1, padding: '0', minWidth: 0 }}>
         {children}
       </main>
 
