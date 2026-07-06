@@ -211,6 +211,7 @@ function ProfileTab({ profile, lastLogin, onUpdate }: { profile: Profile; lastLo
               <select value={tier} onChange={e => setTier(e.target.value as MemberTier)} style={inp}>
                 {([
                   ['free', 'Free'],
+                  ['base', 'Base'],
                   ['core', 'Core'],
                   ['elite', 'Elevate'],
                   ['founding', '1-1 Elite'],

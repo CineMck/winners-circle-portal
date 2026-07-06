@@ -7,6 +7,7 @@ type Result = { email: string; status: 'sent' | 'manual' | 'error'; detail?: str
 
 const TIER_OPTIONS = [
   { value: 'free', label: 'Free' },
+  { value: 'base', label: 'Base Member' },
   { value: 'core', label: 'Core Member' },
   { value: 'elite', label: 'Elevate' },
   { value: 'founding', label: '1-1 Elite' },
@@ -17,10 +18,11 @@ function normalizeTier(v: string): string {
   const t = (v || '').trim().toLowerCase();
   if (!t) return '';
   if (t === 'free') return 'free';
+  if (t === 'base' || t === 'base member') return 'base';
   if (t === 'core' || t === 'core member') return 'core';
   if (t === 'elite' || t === 'elevate') return 'elite';
   if (['founding', 'founding member', '1-1 elite', '1-1 elite member'].includes(t)) return 'founding';
-  return ['free', 'core', 'elite', 'founding'].includes(t) ? t : '';
+  return ['free', 'base', 'core', 'elite', 'founding'].includes(t) ? t : '';
 }
 
 // Minimal CSV parser that handles quoted fields and embedded commas/quotes.

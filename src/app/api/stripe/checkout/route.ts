@@ -32,6 +32,12 @@ export async function POST(request: NextRequest) {
     const baseUrl =
       (process.env.NEXT_PUBLIC_APP_URL || 'https://winnerscircleportal.com').replace(/\/$/, '');
 
+    // Base plan promo: $19.95/mo with a free 30-day trial (card collected at
+    // checkout, billing starts after the first month).
+    const isBasePromo =
+      !!process.env.NEXT_PUBLIC_STRIPE_BASE_PROMO_PRICE_ID &&
+      priceId === process.env.NEXT_PUBLIC_STRIPE_BASE_PROMO_PRICE_ID;
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -41,7 +47,10 @@ export async function POST(request: NextRequest) {
       success_url: `${baseUrl}/home?upgraded=true`,
       cancel_url: `${baseUrl}/upgrade`,
       metadata: { userId: user.id },
-      subscription_data: { metadata: { userId: user.id } },
+      subscription_data: {
+        metadata: { userId: user.id },
+        ...(isBasePromo ? { trial_period_days: 30 } : {}),
+      },
       allow_promotion_codes: true,
     });
 

@@ -8,10 +8,11 @@ export interface ResolvedMentions {
 }
 
 // Group tags admins can use in posts. Order = dropdown order.
-export const GROUP_TOKENS = ['everyone', 'free', 'core', 'elite', 'founding', 're_promo'];
+export const GROUP_TOKENS = ['everyone', 'free', 'base', 'core', 'elite', 'founding', 're_promo'];
 const GROUP_LABEL: Record<string, string> = {
   everyone: 'All members',
   free: 'Free tier',
+  base: 'Base tier',
   core: 'Core tier',
   elite: 'Elite tier',
   founding: 'Founding tier',

@@ -200,6 +200,7 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
           style={{ background: 'var(--black-card)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 14px', color: 'var(--text)', fontSize: '14px', outline: 'none' }}>
           <option value="all">All Tiers</option>
           <option value="free">Free</option>
+          <option value="base">Base</option>
           <option value="core">Core</option>
           <option value="elite">Elevate</option>
           <option value="founding">1-1 Elite</option>
@@ -231,7 +232,7 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
                     {isEditing ? (
                       <select value={editTier} onChange={e => setEditTier(e.target.value as MemberTier)}
                         style={{ background: '#161616', border: '1px solid var(--border)', borderRadius: '6px', padding: '4px 8px', color: 'var(--text)', fontSize: '13px' }}>
-                        {['free', 'core', 'elite', 'founding'].map(t => <option key={t} value={t}>{t}</option>)}
+                        {['free', 'base', 'core', 'elite', 'founding'].map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
                     ) : (
                       <span style={{ fontSize: '12px', fontWeight: 700, color: tierColor, border: `1px solid ${tierColor}`, padding: '2px 8px', borderRadius: '20px' }}>
@@ -382,7 +383,8 @@ export default function MembersAdmin({ initialMembers }: { initialMembers: Profi
               <div>
                 <label style={{ fontSize: '13px', color: 'var(--muted)', display: 'block', marginBottom: '6px' }}>Membership Tier</label>
                 <select value={inviteTier} onChange={e => setInviteTier(e.target.value as MemberTier)} style={inputStyle}>
-                  <option value="free">Free</option>
+                  <option value="free">Free (legacy)</option>
+                  <option value="base">Base ($50/mo)</option>
                   <option value="core">Core ($150/mo)</option>
                   <option value="elite">Elevate ($495/mo)</option>
                   <option value="founding">1-1 Elite ($497/mo)</option>

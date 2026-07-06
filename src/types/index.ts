@@ -1,4 +1,4 @@
-export type MemberTier = 'free' | 'core' | 'elite' | 'founding' | 're_promo';
+export type MemberTier = 'free' | 'base' | 'core' | 'elite' | 'founding' | 're_promo';
 export type UserRole = 'member' | 'moderator' | 'admin';
 
 export interface Profile {
@@ -157,7 +157,17 @@ export interface TierConfig {
   features: string[];
 }
 
+/**
+ * Base plan promo — $50/mo list price sold at $19.95/mo with a free 30-day
+ * trial (billing starts after the first month). The checkout route adds the
+ * trial automatically when the Base promo price is purchased.
+ */
+export const BASE_PROMO_PRICE = 19.95;
+export const BASE_TRIAL_DAYS = 30;
+
 export const TIER_CONFIGS: Record<MemberTier, TierConfig> = {
+  // Legacy tier — no longer purchasable. Existing free members are
+  // grandfathered in; new signups start at Base.
   free: {
     name: 'free',
     label: 'Free',
@@ -167,6 +177,21 @@ export const TIER_CONFIGS: Record<MemberTier, TierConfig> = {
     stripe_price_id_annual: '',
     color: '#888888',
     features: ['1 Zoom call per month', 'Free resources library'],
+  },
+  base: {
+    name: 'base',
+    label: 'Base',
+    price_monthly: 50,
+    price_annual: 0, // monthly-only plan
+    // Promo price ($19.95/mo) — what new members actually subscribe to.
+    stripe_price_id_monthly: process.env.NEXT_PUBLIC_STRIPE_BASE_PROMO_PRICE_ID || '',
+    stripe_price_id_annual: '',
+    color: '#b8c4d0',
+    features: [
+      '1 Zoom call per month',
+      'Free resources library',
+      'Winners Circle app access',
+    ],
   },
   core: {
     name: 'core',
@@ -241,7 +266,7 @@ export const TIER_CONFIGS: Record<MemberTier, TierConfig> = {
 };
 
 /** Hierarchy used for upgrade logic — re_promo sits outside it (treated as free). */
-export const TIER_ORDER: MemberTier[] = ['free', 'core', 'elite', 'founding'];
+export const TIER_ORDER: MemberTier[] = ['free', 'base', 'core', 'elite', 'founding'];
 
 export function canAccessTier(userTier: MemberTier, requiredTier: MemberTier): boolean {
   // Real Estate Promo content: promo members only (plus 1-1 Elite, so John
@@ -281,7 +306,9 @@ export function canAccessGroup(userTier: MemberTier, group: AccessGroup): boolea
   switch (group) {
     case 'all':        return true;
     // re_promo is a paying tier and gets the same access as Core.
-    case 'paid':       return userTier !== 'free';
+    // Base is a paying tier but only gets the old Free-level access
+    // (1 call/month + free resources) — NOT paid-group content.
+    case 'paid':       return userTier !== 'free' && userTier !== 'base';
     case 'elevate':    return userTier === 'elite' || userTier === 'founding';
     case 'one_on_one': return userTier === 'founding';
     default:           return false;
@@ -292,6 +319,7 @@ export function canAccessGroup(userTier: MemberTier, group: AccessGroup): boolea
 export function tierRequiredToAccessGroup(tier: MemberTier): AccessGroup {
   switch (tier) {
     case 'free':     return 'all';
+    case 'base':     return 'all';
     case 'core':     return 'paid';
     case 'elite':    return 'elevate';
     case 'founding': return 'one_on_one';

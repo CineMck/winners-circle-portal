@@ -5,7 +5,7 @@ import { sendPushToUsers } from '@/lib/push';
 
 export const dynamic = 'force-dynamic';
 
-const GROUP_TOKENS = ['everyone', 'free', 'core', 'elite', 'founding', 're_promo'];
+const GROUP_TOKENS = ['everyone', 'free', 'base', 'core', 'elite', 'founding', 're_promo'];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**

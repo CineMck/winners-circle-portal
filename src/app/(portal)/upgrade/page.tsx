@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { TIER_CONFIGS, MemberTier, TIER_ORDER } from '@/types';
+import { TIER_CONFIGS, MemberTier, TIER_ORDER, BASE_PROMO_PRICE } from '@/types';
 import { createClient } from '@/lib/supabase/client';
 
-const TIERS: MemberTier[] = ['free', 'core', 'elite', 'founding'];
+// Free is retired (existing free members are grandfathered) — Base replaces it.
+const TIERS: MemberTier[] = ['base', 'core', 'elite', 'founding'];
 
 export default function UpgradePage() {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly');
@@ -29,7 +30,8 @@ export default function UpgradePage() {
 
   async function checkout(tier: MemberTier) {
     const config = TIER_CONFIGS[tier];
-    const priceId = billing === 'monthly' ? config.stripe_price_id_monthly : config.stripe_price_id_annual;
+    // Base is monthly-only (promo price + free 30-day trial).
+    const priceId = billing === 'monthly' || tier === 'base' ? config.stripe_price_id_monthly : config.stripe_price_id_annual;
     if (!priceId) { alert('Stripe price IDs not configured.'); return; }
     setLoading(tier);
     const res = await fetch('/api/stripe/checkout', {
@@ -97,7 +99,7 @@ export default function UpgradePage() {
           const totalAnnual = config.price_annual;
           const isElite = tier === 'elite';
           const isOneOnOne = tier === 'founding'; // now labelled "1-1 Elite Member"
-          const isFree = tier === 'free';
+          const isBase = tier === 'base';
           const isCurrent = currentTier === tier;
           const userIdx = currentTier ? TIER_ORDER.indexOf(currentTier) : -1;
           const tierIdx = TIER_ORDER.indexOf(tier);
@@ -127,7 +129,7 @@ export default function UpgradePage() {
               )}
 
               <div style={{ fontSize: '32px', marginBottom: '8px' }}>
-                {isFree ? '🌱' : tier === 'core' ? '⚡' : tier === 'elite' ? '💎' : '👑'}
+                {isBase ? '🌱' : tier === 'core' ? '⚡' : tier === 'elite' ? '💎' : '👑'}
               </div>
               <h2 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '4px' }}>{config.label}</h2>
 
@@ -137,10 +139,16 @@ export default function UpgradePage() {
                     <div style={{ fontSize: '22px', fontWeight: 800, color: config.color }}>By application</div>
                     <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: 4 }}>Limited seats — pricing on request.</div>
                   </>
-                ) : isFree ? (
+                ) : isBase ? (
                   <>
-                    <span style={{ fontSize: '32px', fontWeight: 800, color: config.color }}>Free</span>
-                    <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: 4 }}>No credit card required.</div>
+                    <span style={{ fontSize: '18px', fontWeight: 600, color: 'var(--muted)', textDecoration: 'line-through', marginRight: 8 }}>
+                      ${config.price_monthly}
+                    </span>
+                    <span style={{ fontSize: '32px', fontWeight: 800, color: config.color }}>${BASE_PROMO_PRICE}</span>
+                    <span style={{ color: 'var(--muted)', fontSize: '14px' }}>/mo</span>
+                    <div style={{ fontSize: '12px', color: '#22c55e', fontWeight: 700, marginTop: 4 }}>
+                      Free 30-day trial — billing starts after your first month.
+                    </div>
                   </>
                 ) : (
                   <>
@@ -169,14 +177,6 @@ export default function UpgradePage() {
                   fontWeight: 700, fontSize: '14px', cursor: 'default',
                 }}>
                   ✓ Your Plan
-                </button>
-              ) : isFree ? (
-                <button disabled style={{
-                  width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid var(--border)',
-                  background: 'transparent', color: 'var(--muted)',
-                  fontWeight: 700, fontSize: '14px', cursor: 'default',
-                }}>
-                  Default for new members
                 </button>
               ) : isOneOnOne ? (
                 <button
@@ -209,7 +209,7 @@ export default function UpgradePage() {
                     color: isElite ? '#0a0a0a' : 'var(--gold)',
                     fontWeight: 700, fontSize: '14px', cursor: 'pointer',
                   }}>
-                  {loading === tier ? '…' : userIdx >= 0 ? `Upgrade to ${config.label}` : `Get ${config.label}`}
+                  {loading === tier ? '…' : isBase ? 'Start Free Trial' : userIdx >= 0 ? `Upgrade to ${config.label}` : `Get ${config.label}`}
                 </button>
               )}
 

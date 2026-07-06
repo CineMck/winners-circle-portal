@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     if (!userId) return NextResponse.json({ error: 'userId is required' }, { status: 400 });
 
     const ALLOWED_ROLES = ['member', 'moderator', 'admin'];
-    const ALLOWED_TIERS = ['free', 'core', 'elite', 'founding', 're_promo'];
+    const ALLOWED_TIERS = ['free', 'base', 'core', 'elite', 'founding', 're_promo'];
 
     const updates: Record<string, string> = {};
     if (tier !== undefined) {

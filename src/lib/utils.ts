@@ -31,6 +31,7 @@ export function formatCurrency(cents: number): string {
 export function getTierColor(tier: MemberTier): string {
   const colors: Record<MemberTier, string> = {
     free: '#888888',
+    base: '#b8c4d0',
     core: '#c9a84c',
     elite: '#e0c068',
     founding: '#ffd700',
@@ -43,6 +44,7 @@ export function getTierColor(tier: MemberTier): string {
 export function getTierLabel(tier: MemberTier): string {
   const labels: Record<MemberTier, string> = {
     free: 'Free',
+    base: 'Base',
     core: 'Core',
     elite: 'Elevate',
     founding: '1-1 Elite',

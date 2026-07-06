@@ -2,10 +2,10 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
-import { TIER_CONFIGS, MemberTier } from '@/types';
+import { TIER_CONFIGS, MemberTier, BASE_PROMO_PRICE } from '@/types';
 import Logo from '@/components/Logo';
 
-const TIERS: MemberTier[] = ['free', 'core', 'elite'];
+const TIERS: MemberTier[] = ['base', 'core', 'elite'];
 
 // Current terms version. Bump when material changes are made — anyone who
 // signed up under an older version will be re-prompted in the portal.
@@ -13,9 +13,10 @@ const CURRENT_TERMS_VERSION = '2026-06-04';
 
 // Detailed feature descriptions shown on the signup tier cards
 const TIER_FEATURE_DETAILS: Record<string, { title: string; desc: string }[]> = {
-  free: [
+  base: [
     { title: '1 Zoom Call Per Month', desc: 'Join a live group call every month to stay connected and growing.' },
     { title: 'Free Resources Library', desc: 'Access curated tools, templates, and training materials.' },
+    { title: 'Winners Circle App Access', desc: 'Take the Circle with you — resources and calls right in your pocket.' },
   ],
   core: [
     { title: '4 Zoom Lessons Per Month', desc: 'Live coaching lessons to keep your mindset and strategy sharp.' },
@@ -91,7 +92,9 @@ export default function SignupPage() {
   ];
   const currentStepIdx = steps.findIndex(s => s.id === stage);
 
-  const requiresPayment = selectedTier === 'core' || selectedTier === 'elite';
+  // Every purchasable plan requires payment now — the Free tier was retired
+  // (existing free members are grandfathered) and replaced by Base.
+  const requiresPayment = selectedTier !== 'free';
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -157,7 +160,8 @@ export default function SignupPage() {
       // Paid tier → Stripe Checkout. Webhook updates tier on payment success.
       if (requiresPayment) {
         const config = TIER_CONFIGS[selectedTier];
-        const priceId = billing === 'monthly'
+        // Base is monthly-only (promo price + free 30-day trial).
+        const priceId = billing === 'monthly' || selectedTier === 'base'
           ? config.stripe_price_id_monthly
           : config.stripe_price_id_annual;
         if (!priceId) {
@@ -226,7 +230,7 @@ export default function SignupPage() {
   const priceDisplay = (tier: MemberTier) => {
     const config = TIER_CONFIGS[tier];
     if (tier === 'free') return 'Free';
-    if (billing === 'monthly') return `$${config.price_monthly}/mo`;
+    if (billing === 'monthly' || tier === 'base') return `$${config.price_monthly}/mo`;
     return `$${Math.round(config.price_annual / 12)}/mo · $${config.price_annual}/yr`;
   };
 
@@ -332,7 +336,7 @@ export default function SignupPage() {
                     )}
 
                     <div style={{ color: config.color, fontSize: '26px', marginBottom: '10px' }}>
-                      {tier === 'free' ? '🌱' : tier === 'core' ? '⚡' : '🚀'}
+                      {tier === 'base' ? '🌱' : tier === 'core' ? '⚡' : '🚀'}
                     </div>
                     <div style={{ fontWeight: 800, fontSize: '20px', color: config.color, marginBottom: '2px' }}>
                       {config.label.toUpperCase()}{tier !== 'free' && ' MEMBERSHIP'}
@@ -342,9 +346,31 @@ export default function SignupPage() {
                         Small Group Coaching — Limited To 10 People
                       </div>
                     )}
-                    <div style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: '12px 0 20px' }}>
-                      {priceDisplay(tier)}
-                    </div>
+                    {tier === 'base' ? (
+                      <div style={{ margin: '12px 0 20px' }}>
+                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#fff' }}>
+                          <span style={{ color: '#666', textDecoration: 'line-through', fontSize: '17px', fontWeight: 600, marginRight: '8px' }}>
+                            ${TIER_CONFIGS.base.price_monthly}
+                          </span>
+                          ${BASE_PROMO_PRICE}<span style={{ fontSize: '14px', color: '#888', fontWeight: 600 }}>/mo</span>
+                        </div>
+                        <div style={{
+                          marginTop: '8px', display: 'inline-block',
+                          background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.4)',
+                          color: '#22c55e', fontSize: '11.5px', fontWeight: 700,
+                          padding: '4px 10px', borderRadius: '100px', letterSpacing: '0.5px',
+                        }}>
+                          FREE 30-DAY TRIAL
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#888', marginTop: '6px' }}>
+                          Billing starts after your first month · Cancel anytime
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '24px', fontWeight: 700, color: '#fff', margin: '12px 0 20px' }}>
+                        {priceDisplay(tier)}
+                      </div>
+                    )}
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                       {details.map(f => (
@@ -388,7 +414,9 @@ export default function SignupPage() {
             <h2 style={{ margin: '0 0 6px', fontSize: '20px', fontWeight: 800, color: '#fff' }}>Create your account</h2>
             <p style={{ margin: '0 0 24px', fontSize: '14px', color: '#888' }}>
               Your <strong style={{ color: '#c9a84c' }}>{TIER_CONFIGS[selectedTier].label}</strong> membership starts here.
-              {requiresPayment && (
+              {selectedTier === 'base' ? (
+                <> · <strong style={{ color: '#22c55e' }}>Free 30-day trial</strong>, then ${BASE_PROMO_PRICE}/mo</>
+              ) : requiresPayment && (
                 <> · Billing: <strong style={{ color: '#c9a84c' }}>{billing === 'monthly' ? 'Monthly' : 'Annual'}</strong></>
               )}
             </p>

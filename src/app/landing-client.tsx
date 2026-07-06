@@ -338,7 +338,7 @@ export default function LandingClient() {
             <a href="#pricing" className="nav-link">Membership</a>
             <Link href="/login" className="nav-link nav-link-app">Sign In</Link>
           </div>
-          <Link href="/signup" className="nav-cta">Join Free</Link>
+          <Link href="/signup" className="nav-cta">Start Free Trial</Link>
           <button className={`nav-hamburger${menuOpen ? ' open' : ''}`} aria-label="Menu" onClick={() => setMenuOpen(o => !o)}>
             <span /><span /><span />
           </button>
@@ -350,7 +350,7 @@ export default function LandingClient() {
         <a href="#about" onClick={closeMenu}>About John</a>
         <a href="#pricing" onClick={closeMenu}>Membership</a>
         <Link href="/login" onClick={closeMenu}>Sign In</Link>
-        <Link href="/signup" className="mobile-menu-cta" onClick={closeMenu}>Join Free</Link>
+        <Link href="/signup" className="mobile-menu-cta" onClick={closeMenu}>Start Free Trial</Link>
       </div>
 
       {/* ── HERO ── */}
@@ -364,10 +364,10 @@ export default function LandingClient() {
             <span className="hero-biz-line"><span id="biz-type" /><span className="gradient-text"> Business</span></span>
           </h1>
           <p className="hero-sub reveal d2">
-            Join an elite group of entrepreneurs committed to massive growth, wise decision-making, and building a lasting legacy — for free.
+            Join an elite group of entrepreneurs committed to massive growth, wise decision-making, and building a lasting legacy — free for your first 30 days.
           </p>
           <div className="hero-cta-group reveal d3">
-            <Link href="/signup" className="btn-primary">Join the Circle — Free<Arrow /></Link>
+            <Link href="/signup" className="btn-primary">Start Your Free 30-Day Trial<Arrow /></Link>
             <a href="#about" className="btn-ghost">Meet John →</a>
           </div>
           <div className="hero-social-proof reveal d4">
@@ -668,17 +668,19 @@ export default function LandingClient() {
           </div>
           <div className="pricing-grid">
 
-            {/* STARTER */}
+            {/* BASE */}
             <div className="p-card reveal">
-              <div className="p-tier">Starter</div>
+              <div className="p-tier">Base</div>
+              <div className="p-trial-badge">Free 30-Day Trial</div>
               <div className="p-price-wrap"><span className="p-was">$50</span><span className="p-price"><sup>$</sup>19.95</span></div>
-              <div className="p-period">/ month &nbsp;·&nbsp; Cancel anytime</div>
+              <div className="p-period">/ month after your free 30-day trial &nbsp;·&nbsp; Cancel anytime</div>
               <div className="p-divider" />
               <ul className="p-features">
-                <li><span className="pf-check">✦</span> 2 weekly Zoom lessons per month with John</li>
-                <li><span className="pf-check">✦</span> Full access to the Winners Circle App and community</li>
+                <li><span className="pf-check">✦</span> 1 live Zoom call per month with John</li>
+                <li><span className="pf-check">✦</span> Free resources library — templates, guides &amp; replays</li>
+                <li><span className="pf-check">✦</span> Winners Circle app access</li>
               </ul>
-              <Link href="/signup" className="p-cta">Join Now</Link>
+              <Link href="/signup" className="p-cta">Start Free Trial</Link>
             </div>
 
             {/* ELEVATE — FEATURED */}

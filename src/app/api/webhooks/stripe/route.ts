@@ -5,6 +5,10 @@ import Stripe from 'stripe';
 import { sendMetaEvent } from '@/lib/metaCapi';
 
 const TIER_MAP: Record<string, string> = {
+  // Base plan — both the $19.95/mo promo price (with free 30-day trial) and
+  // the $50/mo list price map to the base tier.
+  [process.env.NEXT_PUBLIC_STRIPE_BASE_PROMO_PRICE_ID || '']: 'base',
+  [process.env.NEXT_PUBLIC_STRIPE_BASE_MONTHLY_PRICE_ID || '']: 'base',
   [process.env.NEXT_PUBLIC_STRIPE_CORE_MONTHLY_PRICE_ID || '']: 'core',
   [process.env.NEXT_PUBLIC_STRIPE_CORE_ANNUAL_PRICE_ID || '']: 'core',
   [process.env.NEXT_PUBLIC_STRIPE_ELITE_MONTHLY_PRICE_ID || '']: 'elite',
@@ -43,7 +47,9 @@ export async function POST(request: NextRequest) {
         await supabase.from('profiles').update({
           stripe_customer_id: customerId,
           stripe_subscription_id: subscriptionId,
-          subscription_status: 'active',
+          // Base signups start in a 30-day trial ('trialing'); store the real
+          // status so it reads correctly in admin, but grant the tier either way.
+          subscription_status: subscription.status === 'trialing' ? 'trialing' : 'active',
           tier,
         }).eq('id', userId);
 
@@ -97,7 +103,9 @@ export async function POST(request: NextRequest) {
       const priceId = subscription.items.data[0]?.price.id;
       const knownTier = TIER_MAP[priceId]; // undefined for legacy / externally-created prices
       const patch: Record<string, unknown> = { subscription_status: subscription.status };
-      if (subscription.status === 'active') {
+      // 'trialing' counts as in good standing — Base members get full tier
+      // access during their free 30-day trial.
+      if (subscription.status === 'active' || subscription.status === 'trialing') {
         // Only change tier for prices we recognize. Legacy/grandfathered members
         // on external prices keep the tier they were imported with — never downgrade.
         if (knownTier) patch.tier = knownTier;
