@@ -56,8 +56,13 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Failed to create group' }, { status: 500 });
       }
 
+      // Upsert (not insert): the add_staff_to_group_conversation DB trigger
+      // already adds admins/moderators the moment the conversation row is
+      // created, so a plain insert would hit a duplicate-key error.
       const rows = [user.id, ...recipientIds].map(id => ({ conversation_id: conv.id, user_id: id }));
-      const { error: partErr } = await supabaseAdmin.from('conversation_participants').insert(rows);
+      const { error: partErr } = await supabaseAdmin
+        .from('conversation_participants')
+        .upsert(rows, { onConflict: 'conversation_id,user_id', ignoreDuplicates: true });
       if (partErr) {
         console.error('Group participant insert error:', partErr);
         return NextResponse.json({ error: 'Failed to add members' }, { status: 500 });
