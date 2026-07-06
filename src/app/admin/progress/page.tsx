@@ -46,6 +46,34 @@ export default async function ProgressPage() {
     .from('challenge_checkins')
     .select('user_id, check_date, challenge_id');
 
+  // Community activity (posts + comments) from the last 90 days — feeds both
+  // "Last Active" and the 30-day activity column.
+  const since = new Date(Date.now() - 90 * 86400000).toISOString();
+  const { data: recentPosts } = await supabaseAdmin
+    .from('posts')
+    .select('author_id, created_at')
+    .gte('created_at', since);
+  const { data: recentComments } = await supabaseAdmin
+    .from('comments')
+    .select('author_id, created_at')
+    .gte('created_at', since);
+
+  // Last sign-in per user from Supabase Auth — the truest "last active",
+  // even for members who never post or take courses.
+  const lastSignIn: Record<string, string> = {};
+  try {
+    let page = 1;
+    for (;;) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
+      if (error || !data?.users?.length) break;
+      for (const u of data.users) if (u.last_sign_in_at) lastSignIn[u.id] = u.last_sign_in_at;
+      if (data.users.length < 1000) break;
+      page++;
+    }
+  } catch { /* proceed without sign-in data */ }
+
+  const cutoff30 = Date.now() - 30 * 86400000;
+
   // Build summary per member
   const lessonsByCourse: Record<string, number> = {};
   (allLessons || []).forEach(l => {
@@ -76,14 +104,36 @@ export default async function ProgressPage() {
     const myCheckins = (checkins || []).filter(c => c.user_id === m.id);
     const completedChallenges = myParticipations.filter(p => p.status === 'completed').length;
 
-    // Last activity
-    const dates = [
+    const myPosts = (recentPosts || []).filter(p => p.author_id === m.id);
+    const myComments = (recentComments || []).filter(c => c.author_id === m.id);
+
+    // Last activity — most recent of: sign-in, post, comment, lesson, check-in
+    const stamps = [
+      lastSignIn[m.id],
+      ...myPosts.map(p => p.created_at),
+      ...myComments.map(c => c.created_at),
       ...myProgress.map(p => p.completed_at),
       ...myCheckins.map(c => c.check_date),
-    ].filter(Boolean).sort().reverse();
-    const lastActive = dates[0] || null;
+    ]
+      .filter(Boolean)
+      .map(d => new Date(d as string).getTime())
+      .filter(t => !Number.isNaN(t))
+      .sort((a, b) => b - a);
+    const lastActive = stamps[0] ? new Date(stamps[0]).toISOString() : null;
+
+    // Activity over the last 30 days
+    const in30 = (d?: string | null) => !!d && new Date(d).getTime() >= cutoff30;
+    const posts30 = myPosts.filter(p => in30(p.created_at)).length;
+    const comments30 = myComments.filter(c => in30(c.created_at)).length;
+    const checkins30 = myCheckins.filter(c => in30(c.check_date)).length;
+    const lessons30 = myProgress.filter(p => in30(p.completed_at)).length;
 
     return {
+      posts30,
+      comments30,
+      checkins30,
+      lessons30,
+      activity30: posts30 + comments30 + checkins30 + lessons30,
       id: m.id,
       full_name: m.full_name,
       avatar_url: m.avatar_url,

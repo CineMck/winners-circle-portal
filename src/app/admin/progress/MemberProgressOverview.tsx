@@ -17,9 +17,14 @@ interface MemberStat {
   challengesCompleted: number;
   totalCheckins: number;
   lastActive: string | null;
+  activity30: number;
+  posts30: number;
+  comments30: number;
+  checkins30: number;
+  lessons30: number;
 }
 
-type SortKey = 'name' | 'courses' | 'lessons' | 'avgPct' | 'challenges' | 'checkins' | 'lastActive';
+type SortKey = 'name' | 'courses' | 'lessons' | 'avgPct' | 'challenges' | 'checkins' | 'activity30' | 'lastActive';
 
 function timeAgo(dateStr: string) {
   const d = new Date(dateStr);
@@ -62,6 +67,7 @@ export default function MemberProgressOverview({ members }: { members: MemberSta
       else if (sortKey === 'avgPct') { va = a.avgCourseCompletion; vb = b.avgCourseCompletion; }
       else if (sortKey === 'challenges') { va = a.challengesJoined; vb = b.challengesJoined; }
       else if (sortKey === 'checkins') { va = a.totalCheckins; vb = b.totalCheckins; }
+      else if (sortKey === 'activity30') { va = a.activity30; vb = b.activity30; }
       else if (sortKey === 'lastActive') { va = a.lastActive || ''; vb = b.lastActive || ''; }
       if (va < vb) return sortAsc ? -1 : 1;
       if (va > vb) return sortAsc ? 1 : -1;
@@ -92,6 +98,7 @@ export default function MemberProgressOverview({ members }: { members: MemberSta
     ? Math.round(members.filter(m => m.avgCourseCompletion > 0).reduce((s, m) => s + m.avgCourseCompletion, 0) / (members.filter(m => m.avgCourseCompletion > 0).length || 1))
     : 0;
   const totalCheckins = members.reduce((s, m) => s + m.totalCheckins, 0);
+  const active30 = members.filter(m => m.lastActive && Date.now() - new Date(m.lastActive).getTime() < 30 * 86400000).length;
 
   return (
     <div style={{ padding: '32px' }}>
@@ -107,7 +114,7 @@ export default function MemberProgressOverview({ members }: { members: MemberSta
           { label: 'Members in Courses', value: totalWithCourses, sub: `of ${members.length} total`, color: '#3b82f6' },
           { label: 'Avg Course Completion', value: `${avgCompletion}%`, sub: 'across active learners', color: 'var(--gold)' },
           { label: 'Members in Challenges', value: totalWithChallenges, sub: `of ${members.length} total`, color: '#10b981' },
-          { label: 'Total Check-ins', value: totalCheckins.toLocaleString(), sub: 'all time', color: '#8b5cf6' },
+          { label: 'Active Last 30 Days', value: `${active30}`, sub: `of ${members.length} members · ${totalCheckins.toLocaleString()} check-ins all time`, color: '#8b5cf6' },
         ].map(card => (
           <div key={card.label} style={{ background: 'var(--black-card)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px' }}>
             <div style={{ fontSize: '28px', fontWeight: 800, color: card.color, marginBottom: '4px' }}>{card.value}</div>
@@ -132,6 +139,7 @@ export default function MemberProgressOverview({ members }: { members: MemberSta
           <option value="founding">1-1 Elite</option>
           <option value="elite">Elevate</option>
           <option value="core">Core</option>
+          <option value="base">Base</option>
           <option value="free">Free</option>
         </select>
       </div>
@@ -148,6 +156,7 @@ export default function MemberProgressOverview({ members }: { members: MemberSta
                 <SortHeader label="Avg Completion" sk="avgPct" />
                 <SortHeader label="Challenges" sk="challenges" />
                 <SortHeader label="Check-ins" sk="checkins" />
+                <SortHeader label="30-Day Activity" sk="activity30" />
                 <SortHeader label="Last Active" sk="lastActive" />
                 <th style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }} />
               </tr>
@@ -155,7 +164,7 @@ export default function MemberProgressOverview({ members }: { members: MemberSta
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: '48px', textAlign: 'center', color: 'var(--muted)', fontSize: '14px' }}>
+                  <td colSpan={9} style={{ padding: '48px', textAlign: 'center', color: 'var(--muted)', fontSize: '14px' }}>
                     No members match your search.
                   </td>
                 </tr>
@@ -215,6 +224,22 @@ export default function MemberProgressOverview({ members }: { members: MemberSta
                     {/* Check-ins */}
                     <td style={{ padding: '14px', fontSize: '14px', fontWeight: 600, color: m.totalCheckins > 0 ? '#8b5cf6' : 'var(--muted)' }}>
                       {m.totalCheckins > 0 ? m.totalCheckins : '—'}
+                    </td>
+                    {/* 30-day activity */}
+                    <td style={{ padding: '14px', whiteSpace: 'nowrap' }}>
+                      {m.activity30 > 0 ? (
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#22c55e' }}>{m.activity30}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--muted)' }}>
+                            {[
+                              m.posts30 > 0 ? `${m.posts30} post${m.posts30 === 1 ? '' : 's'}` : null,
+                              m.comments30 > 0 ? `${m.comments30} comment${m.comments30 === 1 ? '' : 's'}` : null,
+                              m.checkins30 > 0 ? `${m.checkins30} check-in${m.checkins30 === 1 ? '' : 's'}` : null,
+                              m.lessons30 > 0 ? `${m.lessons30} lesson${m.lessons30 === 1 ? '' : 's'}` : null,
+                            ].filter(Boolean).join(' · ')}
+                          </div>
+                        </div>
+                      ) : <span style={{ color: 'var(--muted)', fontSize: '13px' }}>—</span>}
                     </td>
                     {/* Last active */}
                     <td style={{ padding: '14px', fontSize: '12px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
