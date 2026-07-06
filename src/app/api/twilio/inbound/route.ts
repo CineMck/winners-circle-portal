@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
  * own list in sync.
  */
 const STOP_WORDS = ['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT', 'REVOKE'];
+const START_WORDS = ['START', 'UNSTOP', 'YES'];
 
 export async function POST(req: NextRequest) {
   let from = '';
@@ -22,16 +23,28 @@ export async function POST(req: NextRequest) {
     return new NextResponse('<Response></Response>', { headers: { 'Content-Type': 'text/xml' } });
   }
 
-  if (from && STOP_WORDS.includes(body)) {
+  const isStop = STOP_WORDS.includes(body);
+  const isStart = START_WORDS.includes(body);
+  if (from && (isStop || isStart)) {
     const target = from.replace(/\D/g, '').slice(-10); // compare on last 10 digits
     if (target.length === 10) {
       const db = createAdminClient();
-      // Stored phone formats vary, so normalize in JS and match by trailing digits.
-      const { data } = await db.from('re_mastermind_registrations').select('id, phone').eq('sms_opt_out', false);
-      const ids = (data || [])
+      const optOut = isStop; // START clears the suppression again
+
+      // RE marketing list — stored phone formats vary, so normalize in JS and
+      // match by trailing digits.
+      const { data: regs } = await db.from('re_mastermind_registrations').select('id, phone').eq('sms_opt_out', !optOut);
+      const regIds = (regs || [])
         .filter((r) => String(r.phone || '').replace(/\D/g, '').slice(-10) === target)
         .map((r) => r.id);
-      if (ids.length) await db.from('re_mastermind_registrations').update({ sms_opt_out: true }).in('id', ids);
+      if (regIds.length) await db.from('re_mastermind_registrations').update({ sms_opt_out: optOut }).in('id', regIds);
+
+      // Member profiles — same suppression applies to admin SMS broadcasts.
+      const { data: profs } = await db.from('profiles').select('id, phone').eq('sms_opt_out', !optOut).not('phone', 'is', null);
+      const profIds = (profs || [])
+        .filter((p) => String(p.phone || '').replace(/\D/g, '').slice(-10) === target)
+        .map((p) => p.id);
+      if (profIds.length) await db.from('profiles').update({ sms_opt_out: optOut }).in('id', profIds);
     }
   }
 

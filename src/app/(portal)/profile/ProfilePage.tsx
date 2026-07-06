@@ -31,6 +31,23 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
   const [cancelMessage, setCancelMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const isPaidTier = profile?.tier !== 'free';
 
+  // SMS text updates opt-in
+  const [smsPhone, setSmsPhone] = useState(profile?.phone || '');
+  const [smsConsent, setSmsConsent] = useState(!!profile?.sms_consent);
+  const [smsSaving, setSmsSaving] = useState(false);
+  const [smsMessage, setSmsMessage] = useState<string | null>(null);
+
+  async function saveSmsPrefs() {
+    setSmsSaving(true);
+    setSmsMessage(null);
+    const { error } = await supabase.from('profiles').update({
+      phone: smsPhone.trim() || null,
+      sms_consent: smsConsent && !!smsPhone.trim(),
+    }).eq('id', profile.id);
+    setSmsMessage(error ? 'Could not save — please try again.' : '✓ Preferences saved');
+    setSmsSaving(false);
+  }
+
   async function openCustomerPortal() {
     try {
       const res = await fetch('/api/stripe/portal', { method: 'GET', redirect: 'manual' });
@@ -379,6 +396,47 @@ export default function ProfilePage({ profile, completedChallenges, recentPosts 
               )}
             </div>
           )}
+
+          {/* Text updates opt-in */}
+          <h3 style={{ fontSize: '16px', fontWeight: 700, margin: '24px 0 12px' }}>Text Updates</h3>
+          <div style={{ padding: '16px', background: '#161616', borderRadius: '10px' }}>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.5 }}>
+              Get call reminders and announcements by text. Msg &amp; data rates may apply — reply STOP anytime to opt out.
+            </div>
+            <input
+              type="tel"
+              value={smsPhone}
+              onChange={e => setSmsPhone(e.target.value)}
+              placeholder="+1 (555) 000-0000"
+              style={{
+                width: '100%', background: '#0f0f0f', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '10px 12px', color: 'var(--text)',
+                fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 10,
+              }}
+            />
+            <label style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer', marginBottom: 12 }}>
+              <input
+                type="checkbox"
+                checked={smsConsent}
+                onChange={e => setSmsConsent(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#c9a84c', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: 13 }}>Text me updates from The Winners Circle</span>
+            </label>
+            {profile?.sms_opt_out && (
+              <div style={{ fontSize: 12, color: '#f59e0b', marginBottom: 10 }}>
+                ⚠️ You previously replied STOP, so texts are paused. Text START to our number to resume.
+              </div>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button onClick={saveSmsPrefs} disabled={smsSaving} className="btn-gold" style={{ padding: '8px 20px', fontSize: 13 }}>
+                {smsSaving ? 'Saving…' : 'Save'}
+              </button>
+              {smsMessage && (
+                <span style={{ fontSize: 12, color: smsMessage.startsWith('✓') ? '#22c55e' : '#ef4444' }}>{smsMessage}</span>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

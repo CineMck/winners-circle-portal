@@ -75,6 +75,7 @@ export default function SignupPage() {
   // Profile / questionnaire fields
   const [industry, setIndustry] = useState('');
   const [phone, setPhone] = useState('');
+  const [smsConsent, setSmsConsent] = useState(false);
   const [birthday, setBirthday] = useState('');
   const [goals12, setGoals12] = useState('');
   const [goals30, setGoals30] = useState('');
@@ -145,6 +146,7 @@ export default function SignupPage() {
         const { error: profileErr } = await supabase.from('profiles').update({
           industry: industry || null,
           phone: phone.trim() || null,
+          sms_consent: smsConsent && !!phone.trim(),
           birthday: birthday || null,
           goals_12_months: goals12.trim() || null,
           goals_30_days: goals30.trim() || null,
@@ -516,6 +518,24 @@ export default function SignupPage() {
                 <label style={labelStyle}>Phone Number <span style={{ color: '#555', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
                 <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                   placeholder="+1 (555) 000-0000" style={inputStyle} />
+                {phone.trim() && (
+                  <label style={{
+                    display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 10,
+                    background: '#0e0e0e', border: '1px solid #2a2a2a', borderRadius: 10,
+                    padding: '10px 12px', cursor: 'pointer',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={smsConsent}
+                      onChange={e => setSmsConsent(e.target.checked)}
+                      style={{ marginTop: 2, width: 16, height: 16, accentColor: '#c9a84c', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: 12, color: '#bbb', lineHeight: 1.5 }}>
+                      Text me updates from The Winners Circle (call reminders, announcements).
+                      Msg &amp; data rates may apply. Reply STOP anytime to opt out.
+                    </span>
+                  </label>
+                )}
               </div>
 
               <div>

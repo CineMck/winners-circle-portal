@@ -19,6 +19,8 @@ export interface Profile {
   industry: string | null;
   birthday: string | null;
   phone: string | null;
+  sms_consent?: boolean;
+  sms_opt_out?: boolean;
   goals_12_months: string | null;
   goals_30_days: string | null;
   followers_count?: number;
