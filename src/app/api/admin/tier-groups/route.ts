@@ -12,6 +12,7 @@ const supabaseAdmin = createClient(
 // in sync by the sync_tier_group_membership() DB trigger; this endpoint creates
 // the groups and does the initial population.
 const TIER_GROUPS = [
+  { tier: 'base', name: 'Base Members' },
   { tier: 'core', name: 'Core Members' },
   { tier: 'elite', name: 'Elevate Members' },
   { tier: 'founding', name: '1-1 Elite Members' },
@@ -27,6 +28,15 @@ export async function POST() {
   }
 
   const results: { tier: string; group_id: string; members: number }[] = [];
+
+  // Admins + moderators join every tier group so they can open, read, and
+  // post in them regardless of their own tier (fixes 404 when an admin
+  // creates/opens a group for a tier they don't belong to). The DB trigger
+  // skips role='admin'/'moderator' rows when pruning mismatched tiers
+  // (supabase/tier_groups_admins.sql).
+  const { data: staff } = await supabaseAdmin
+    .from('profiles').select('id').in('role', ['admin', 'moderator']);
+  const staffIds = (staff || []).map(s => s.id);
 
   for (const g of TIER_GROUPS) {
     // Find or create this tier's group conversation.
@@ -46,10 +56,12 @@ export async function POST() {
       groupId = created.id;
     }
 
-    // Initial population — add all current members of this tier (idempotent).
+    // Initial population — all current members of this tier + all staff
+    // (idempotent).
     const { data: members } = await supabaseAdmin
       .from('profiles').select('id').eq('tier', g.tier);
-    const rows = (members || []).map(m => ({ conversation_id: groupId, user_id: m.id }));
+    const memberIds = new Set([...(members || []).map(m => m.id), ...staffIds]);
+    const rows = [...memberIds].map(id => ({ conversation_id: groupId, user_id: id }));
     if (rows.length > 0) {
       await supabaseAdmin
         .from('conversation_participants')

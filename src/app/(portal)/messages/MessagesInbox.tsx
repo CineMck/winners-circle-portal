@@ -34,7 +34,7 @@ function timeAgo(iso: string) {
 }
 
 function Avatar({ user, size = 44 }: { user: OtherUser; size?: number }) {
-  const tc = getTierColor(user.tier as 'free' | 'core' | 'elite' | 'founding' | 're_promo');
+  const tc = getTierColor(user.tier as 'free' | 'base' | 'core' | 'elite' | 'founding' | 're_promo');
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%',
@@ -224,7 +224,7 @@ export default function MessagesInbox({ profile, conversations, members, isAdmin
                   Auto-synced tier groups — members are added &amp; removed by tier:
                 </p>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  {[{ t: 'core', l: 'Core' }, { t: 'elite', l: 'Elevate' }, { t: 'founding', l: '1-1 Elite' }].map(x => (
+                  {[{ t: 'base', l: 'Base' }, { t: 'core', l: 'Core' }, { t: 'elite', l: 'Elevate' }, { t: 'founding', l: '1-1 Elite' }].map(x => (
                     <button key={x.t} type="button" onClick={() => createTierGroup(x.t)} disabled={creatingGroup}
                       style={{ flex: 1, padding: '8px 4px', fontSize: '12px', fontWeight: 700, borderRadius: '8px', cursor: creatingGroup ? 'not-allowed' : 'pointer', background: 'var(--gold-dim)', border: '1px solid var(--gold)', color: 'var(--gold)' }}>
                       {x.l}
