@@ -44,6 +44,7 @@ export async function middleware(request: NextRequest) {
     '/auth/reset',
     '/privacy',
     '/terms',
+    '/sms-policy',
     '/install-guide',
     '/real-estate',
     '/api/real-estate/register',
@@ -59,7 +60,7 @@ export async function middleware(request: NextRequest) {
   ];
   // Routes a signed-in user is still allowed to hit (don't bounce them to /home).
   const allowLoggedIn = [
-    '/auth/reset', '/privacy', '/terms', '/real-estate', '/api/real-estate/register',
+    '/auth/reset', '/privacy', '/terms', '/sms-policy', '/real-estate', '/api/real-estate/register',
     '/unsubscribe', '/api/unsubscribe',
     '/api/webhooks/', '/api/push/webhook', '/api/push/event-reminders', '/api/real-estate/reminders',
     '/api/automations/run', '/api/twilio/inbound',
