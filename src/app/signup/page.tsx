@@ -119,13 +119,15 @@ export default function SignupPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      // Save name + terms acceptance immediately
+      // Save name + phone + SMS consent + terms acceptance immediately
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const username = fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
         await supabase.from('profiles').update({
           full_name: fullName.trim(),
           username,
+          phone: phone.trim() || null,
+          sms_consent: smsConsent && !!phone.trim(),
           terms_accepted_at: new Date().toISOString(),
           terms_version: CURRENT_TERMS_VERSION,
         }).eq('id', user.id);
@@ -444,6 +446,35 @@ export default function SignupPage() {
                   placeholder="At least 8 characters" minLength={8} required style={inputStyle} />
               </div>
 
+              <div>
+                <label style={labelStyle}>Phone Number <span style={{ color: '#555', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+                  placeholder="+1 (555) 000-0000" style={inputStyle} />
+              </div>
+
+              {/* SMS opt-in — unchecked by default, only meaningful with a phone */}
+              <label style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+                background: '#0e0e0e', border: '1px solid #2a2a2a', borderRadius: 10,
+                padding: '12px 14px', cursor: 'pointer',
+                opacity: phone.trim() ? 1 : 0.55,
+              }}>
+                <input
+                  type="checkbox"
+                  checked={smsConsent}
+                  onChange={e => setSmsConsent(e.target.checked)}
+                  disabled={!phone.trim()}
+                  style={{ marginTop: 3, width: 16, height: 16, accentColor: '#c9a84c', cursor: 'pointer' }}
+                />
+                <span style={{ fontSize: 12, color: '#bbb', lineHeight: 1.5 }}>
+                  Text me updates from The Winners Circle (call reminders, announcements).
+                  Msg &amp; data rates may apply. Reply STOP anytime to opt out.{' '}
+                  <Link href="/sms-policy" target="_blank" style={{ color: 'var(--gold)', textDecoration: 'underline' }}>
+                    SMS Terms
+                  </Link>
+                </span>
+              </label>
+
               {/* Terms agreement — must be checked */}
               <label style={{
                 display: 'flex', gap: 10, alignItems: 'flex-start',
@@ -512,30 +543,6 @@ export default function SignupPage() {
                   <option value="">Select your industry…</option>
                   {INDUSTRIES.map(ind => <option key={ind} value={ind}>{ind}</option>)}
                 </select>
-              </div>
-
-              <div>
-                <label style={labelStyle}>Phone Number <span style={{ color: '#555', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
-                <input type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                  placeholder="+1 (555) 000-0000" style={inputStyle} />
-                {phone.trim() && (
-                  <label style={{
-                    display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 10,
-                    background: '#0e0e0e', border: '1px solid #2a2a2a', borderRadius: 10,
-                    padding: '10px 12px', cursor: 'pointer',
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={smsConsent}
-                      onChange={e => setSmsConsent(e.target.checked)}
-                      style={{ marginTop: 2, width: 16, height: 16, accentColor: '#c9a84c', cursor: 'pointer' }}
-                    />
-                    <span style={{ fontSize: 12, color: '#bbb', lineHeight: 1.5 }}>
-                      Text me updates from The Winners Circle (call reminders, announcements).
-                      Msg &amp; data rates may apply. Reply STOP anytime to opt out.
-                    </span>
-                  </label>
-                )}
               </div>
 
               <div>
