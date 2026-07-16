@@ -42,6 +42,8 @@ export default function ConversationView({ conversationId, profile, isGroup, gro
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [asJohn, setAsJohn] = useState(false);
+  const [sendError, setSendError] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   // Manage-members panel (group + admin only)
   const [manageOpen, setManageOpen] = useState(false);
@@ -82,7 +84,9 @@ export default function ConversationView({ conversationId, profile, isGroup, gro
       }, (payload) => {
         const msg = payload.new as Message;
         if (msg.sender_id !== profile.id) {
-          setMessages(prev => [...prev, msg]);
+          // Dedupe: a ghost message this admin sent as John arrives here too
+          // (sender_id = John ≠ me) but was already appended optimistically.
+          setMessages(prev => (prev.some(m => m.id === msg.id) ? prev : [...prev, msg]));
           // Mark as read
           supabase.from('conversation_participants')
             .update({ last_read_at: new Date().toISOString() })
@@ -142,8 +146,34 @@ export default function ConversationView({ conversationId, profile, isGroup, gro
     e.preventDefault();
     if (!input.trim() || sending) return;
     setSending(true);
+    setSendError('');
     const content = input.trim();
     setInput('');
+
+    // Admin ghost-send: publish the DM under John's account via the
+    // service-role route (RLS blocks sending as another user client-side).
+    if (asJohn && isAdmin) {
+      try {
+        const res = await fetch('/api/admin/ghost/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversationId, content }),
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          setSendError(json.error || 'Failed to send as John.');
+          setInput(content); // restore so the admin doesn't lose the text
+        } else if (json.message) {
+          // Append John's message; realtime dedupes by id.
+          setMessages(prev => (prev.some(m => m.id === json.message.id) ? prev : [...prev, json.message]));
+        }
+      } catch {
+        setSendError('Failed to send as John.');
+        setInput(content);
+      }
+      setSending(false);
+      return;
+    }
 
     // Optimistic update
     const optimistic: Message = {
@@ -335,17 +365,45 @@ export default function ConversationView({ conversationId, profile, isGroup, gro
       </div>
 
       {/* Input */}
-      <form onSubmit={sendMessage} style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', gap: '10px', background: 'var(--black-card)', flexShrink: 0 }}>
-        <input
-          value={input} onChange={e => setInput(e.target.value)}
-          placeholder={inputPlaceholder}
-          style={{ flex: 1, background: '#161616', border: '1px solid var(--border)', borderRadius: '24px', padding: '10px 16px', color: 'var(--text)', fontSize: '14px', outline: 'none' }}
-        />
-        <button type="submit" disabled={sending || !input.trim()} className="btn-gold"
-          style={{ padding: '10px 20px', borderRadius: '24px', fontSize: '14px', flexShrink: 0 }}>
-          Send
-        </button>
-      </form>
+      <div style={{ borderTop: '1px solid var(--border)', background: 'var(--black-card)', flexShrink: 0 }}>
+        {isAdmin && (
+          <div style={{ padding: '8px 16px 0', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setAsJohn(v => !v)}
+              title="Send this message from John Wentworth's account"
+              style={{
+                background: asJohn ? 'var(--gold-dim)' : 'none',
+                border: `1px solid ${asJohn ? 'var(--gold)' : 'var(--border)'}`,
+                borderRadius: '20px', padding: '4px 12px',
+                color: asJohn ? 'var(--gold)' : 'var(--muted)',
+                cursor: 'pointer', fontSize: '12px', fontWeight: asJohn ? 700 : 400,
+              }}
+            >
+              {asJohn ? '👤 Sending as John' : '👤 Send as John'}
+            </button>
+            {asJohn && (
+              <span style={{ fontSize: '11px', color: 'var(--gold)' }}>
+                They&apos;ll see this from John, not you.
+              </span>
+            )}
+          </div>
+        )}
+        {sendError && (
+          <div style={{ padding: '6px 16px 0', fontSize: '12px', color: 'var(--danger)' }}>{sendError}</div>
+        )}
+        <form onSubmit={sendMessage} style={{ padding: '12px 16px', display: 'flex', gap: '10px' }}>
+          <input
+            value={input} onChange={e => setInput(e.target.value)}
+            placeholder={asJohn ? `Message as John…` : inputPlaceholder}
+            style={{ flex: 1, background: '#161616', border: `1px solid ${asJohn ? 'var(--gold)' : 'var(--border)'}`, borderRadius: '24px', padding: '10px 16px', color: 'var(--text)', fontSize: '14px', outline: 'none' }}
+          />
+          <button type="submit" disabled={sending || !input.trim()} className="btn-gold"
+            style={{ padding: '10px 20px', borderRadius: '24px', fontSize: '14px', flexShrink: 0 }}>
+            Send
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

@@ -16,6 +16,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing priceId in request body.' }, { status: 400 });
     }
 
+    // Only allow the public tier prices. Without this, a user could pass any
+    // price in the Stripe account (a cheaper/legacy/test price) and still be
+    // granted a paid tier by the webhook — entitlement decoupled from price.
+    const ALLOWED_PRICE_IDS = [
+      process.env.NEXT_PUBLIC_STRIPE_CORE_MONTHLY_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_CORE_ANNUAL_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_ELITE_MONTHLY_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_ELITE_ANNUAL_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_FOUNDING_MONTHLY_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_FOUNDING_ANNUAL_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_BASE_PROMO_PRICE_ID,
+      process.env.NEXT_PUBLIC_STRIPE_BASE_MONTHLY_PRICE_ID,
+    ].filter(Boolean) as string[];
+    if (!ALLOWED_PRICE_IDS.includes(priceId)) {
+      return NextResponse.json({ error: 'Invalid plan selected.' }, { status: 400 });
+    }
+
     if (!process.env.STRIPE_SECRET_KEY) {
       return NextResponse.json(
         { error: 'Server is not configured for payments yet — STRIPE_SECRET_KEY is missing.' },

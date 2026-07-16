@@ -35,6 +35,7 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
   const [content, setContent] = useState('');
   const [mentions, setMentions] = useState<ResolvedMentions>({ userIds: [], groups: [] });
   const [items, setItems] = useState<MediaItem[]>([]);
+  const [asJohn, setAsJohn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
   const [postError, setPostError] = useState<string | null>(null);
@@ -45,6 +46,7 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
 
   const tierColor = getTierColor(currentUser?.tier || 'free');
   const isStaff = ['admin', 'moderator'].includes(currentUser?.role);
+  const isAdmin = currentUser?.role === 'admin';
 
   function updateItem(index: number, patch: Partial<MediaItem>) {
     setItems(prev => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
@@ -211,23 +213,51 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
 
     setUploadProgress(null);
 
-    const { data, error } = await supabase
-      .from('posts')
-      .insert({
-        content: content.trim(),
-        author_id: currentUser.id,
-        channel_id: channelId || null,
-        challenge_id: challengeId || null,
-        media_urls: mediaUrls,
-        media_thumbnails: mediaThumbnails,
-      })
-      .select('*, author:profiles!author_id(*), channel:channels(*)')
-      .single();
+    // Admins can publish the post under John Wentworth's account. That requires
+    // the service-role ghost route (RLS blocks writing a post as another user);
+    // normal posts insert directly from the client.
+    let data: unknown = null;
+    let errMsg: string | null = null;
+    if (asJohn && isAdmin) {
+      try {
+        const res = await fetch('/api/admin/ghost/post', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: content.trim(),
+            channelId: channelId || null,
+            challengeId: challengeId || null,
+            mediaUrls,
+            mediaThumbnails,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) errMsg = json.error || 'Failed to post as John.';
+        else data = json.post;
+      } catch {
+        errMsg = 'Failed to post as John.';
+      }
+    } else {
+      const { data: inserted, error } = await supabase
+        .from('posts')
+        .insert({
+          content: content.trim(),
+          author_id: currentUser.id,
+          channel_id: channelId || null,
+          challenge_id: challengeId || null,
+          media_urls: mediaUrls,
+          media_thumbnails: mediaThumbnails,
+        })
+        .select('*, author:profiles!author_id(*), channel:channels(*)')
+        .single();
+      data = inserted;
+      errMsg = error ? error.message : null;
+    }
 
     setLoading(false);
-    if (error) {
-      console.error('Post error:', error);
-      setPostError(error.message);
+    if (errMsg) {
+      console.error('Post error:', errMsg);
+      setPostError(errMsg);
       return;
     }
     // Notify tagged users / groups (server creates the notifications + push).
@@ -243,6 +273,7 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
     setContent('');
     setMentions({ userIds: [], groups: [] });
     setItems([]);
+    setAsJohn(false);
     if (data) onPostCreated?.(data);
   }
 
@@ -373,6 +404,12 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
             </div>
           )}
 
+          {asJohn && isAdmin && (
+            <div style={{ color: 'var(--gold)', fontSize: '12px', marginTop: '6px', padding: '6px 10px', background: 'rgba(201,168,76,0.1)', borderRadius: '6px' }}>
+              👤 This post will be published as <strong>John Wentworth</strong>. Members won&apos;t see that you wrote it.
+            </div>
+          )}
+
           {uploadProgress && (
             <div style={{ color: 'var(--gold)', fontSize: '12px', marginTop: '6px', padding: '6px 10px', background: 'rgba(201,168,76,0.1)', borderRadius: '6px' }}>
               ⏳ {uploadProgress}
@@ -397,6 +434,22 @@ export default function PostComposer({ currentUser, channelId, challengeId, plac
                 <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
                   {items.length} file{items.length > 1 ? 's' : ''} selected
                 </span>
+              )}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setAsJohn(v => !v)}
+                  title="Publish this post from John Wentworth's account"
+                  style={{
+                    background: asJohn ? 'var(--gold-dim)' : 'none',
+                    border: `1px solid ${asJohn ? 'var(--gold)' : 'var(--border)'}`,
+                    borderRadius: '8px', padding: '6px 12px',
+                    color: asJohn ? 'var(--gold)' : 'var(--muted)',
+                    cursor: 'pointer', fontSize: '12px', fontWeight: asJohn ? 700 : 400,
+                  }}
+                >
+                  {asJohn ? '👤 Posting as John' : '👤 Post as John'}
+                </button>
               )}
               <input
                 ref={fileRef}

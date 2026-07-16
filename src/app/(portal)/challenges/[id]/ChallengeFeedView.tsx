@@ -98,11 +98,18 @@ export default function ChallengeFeedView({ challenge, profile, participation, i
   async function markComplete() {
     if (!confirm('Mark this challenge as completed?')) return;
     setLoading(true);
-    await supabase.from('challenge_participations')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
-      .eq('id', currentParticipation!.id);
-    await supabase.from('profiles').update({ xp_points: (profile.xp_points || 0) + challenge.xp_reward }).eq('id', profile.id);
-    setCurrentParticipation(prev => prev ? { ...prev, status: 'completed' } : prev);
+    // Completion + XP are awarded server-side (service role) so members can't
+    // forge XP or self-verify. See /api/challenges/complete.
+    try {
+      const res = await fetch('/api/challenges/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeId: challenge.id }),
+      });
+      if (res.ok) {
+        setCurrentParticipation(prev => prev ? { ...prev, status: 'completed' } : prev);
+      }
+    } catch { /* leave state unchanged on failure */ }
     setLoading(false);
   }
 

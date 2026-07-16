@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { validateTwilioSignature } from '@/lib/twilio';
 
 export const dynamic = 'force-dynamic';
+
+const emptyTwiml = () =>
+  new NextResponse('<Response></Response>', { headers: { 'Content-Type': 'text/xml' } });
 
 /**
  * Twilio inbound SMS webhook (configure as the messaging webhook on your number
@@ -17,10 +21,27 @@ export async function POST(req: NextRequest) {
   let body = '';
   try {
     const form = await req.formData();
+
+    // Verify the request genuinely came from Twilio before acting on it —
+    // otherwise anyone could POST From=<victim>&Body=STOP/START and toggle
+    // another person's SMS opt-out state (TCPA / marketing-griefing risk).
+    const params: Record<string, string> = {};
+    for (const [k, v] of form.entries()) params[k] = String(v);
+    const proto = req.headers.get('x-forwarded-proto') || 'https';
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || '';
+    const publicUrl = `${proto}://${host}${req.nextUrl.pathname}`;
+    const sig = req.headers.get('x-twilio-signature');
+    const valid = validateTwilioSignature(publicUrl, params, sig);
+    if (valid === false) {
+      // Token is configured and the signature didn't match → reject.
+      return emptyTwiml();
+    }
+    // valid === null means TWILIO_AUTH_TOKEN isn't set (local/dev) → proceed.
+
     from = String(form.get('From') || '');
     body = String(form.get('Body') || '').trim().toUpperCase();
   } catch {
-    return new NextResponse('<Response></Response>', { headers: { 'Content-Type': 'text/xml' } });
+    return emptyTwiml();
   }
 
   const isStop = STOP_WORDS.includes(body);

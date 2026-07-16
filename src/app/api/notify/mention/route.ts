@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendPushToUsers } from '@/lib/push';
+import { rateLimit, tooManyRequests } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
+
+// Cap individually-tagged members per call so a single request can't fan out
+// to the whole roster (group tags are the intended broadcast path, staff-only).
+const MAX_DIRECT_TAGS = 50;
 
 const GROUP_TOKENS = ['everyone', 'free', 'base', 'core', 'elite', 'founding', 're_promo'];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -27,6 +32,11 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+    // Blunt notification-spam / phishing-fanout: a member can't fire more than
+    // 30 mention batches per 10 minutes.
+    const rl = rateLimit(`mention:${user.id}`, 30, 10 * 60_000);
+    if (!rl.ok) return tooManyRequests(rl.retryAfter);
+
     const { data: me } = await supabase
       .from('profiles').select('full_name, username, role').eq('id', user.id).single();
     if (!me) return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
@@ -34,11 +44,24 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const context: string = body?.context === 'post' ? 'post' : 'comment';
     const postId: string | undefined = body?.postId;
-    const userIds: string[] = Array.isArray(body?.userIds) ? body.userIds.filter((id: unknown) => typeof id === 'string' && UUID_RE.test(id)) : [];
+    const userIds: string[] = Array.isArray(body?.userIds) ? body.userIds.filter((id: unknown) => typeof id === 'string' && UUID_RE.test(id)).slice(0, MAX_DIRECT_TAGS) : [];
     const groupsRaw: string[] = Array.isArray(body?.groups) ? body.groups.filter((g: unknown) => typeof g === 'string' && GROUP_TOKENS.includes(g)) : [];
     const preview = String(body?.preview || '').slice(0, 140);
 
-    if (!postId) return NextResponse.json({ error: 'postId required' }, { status: 400 });
+    if (!postId || typeof postId !== 'string' || !UUID_RE.test(postId)) {
+      return NextResponse.json({ error: 'valid postId required' }, { status: 400 });
+    }
+
+    // Verify the referenced post exists (blocks notifications pointing at
+    // arbitrary/nonexistent postIds). For post-context mentions, the caller
+    // must be the post's author — that's the only legitimate source of a
+    // "mentioned you in a post" notification.
+    const { data: post } = await createAdminClient()
+      .from('posts').select('author_id').eq('id', postId).single();
+    if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    if (context === 'post' && post.author_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Group tags (@everyone / tiers) are admin/moderator only.
     const isStaff = ['admin', 'moderator'].includes(me.role);

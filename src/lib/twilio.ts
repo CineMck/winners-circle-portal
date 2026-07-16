@@ -9,6 +9,43 @@
  * or carriers will filter your messages. Only text contacts who opted in.
  */
 
+import crypto from 'crypto';
+
+/**
+ * Validate an inbound Twilio webhook against the X-Twilio-Signature header.
+ * Twilio signs: the exact webhook URL (as configured in the console) + the
+ * POST params sorted by key and concatenated, HMAC-SHA1 with the auth token,
+ * base64-encoded.
+ *
+ * Returns:
+ *   - true / false  when TWILIO_AUTH_TOKEN is set (real verification)
+ *   - null          when the token isn't configured (caller decides; lets local
+ *                   dev without Twilio creds still work).
+ */
+export function validateTwilioSignature(
+  url: string,
+  params: Record<string, string>,
+  signature: string | null,
+): boolean | null {
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  if (!token) return null;
+  if (!signature) return false;
+
+  const data = url + Object.keys(params)
+    .sort()
+    .map((k) => k + params[k])
+    .join('');
+  const expected = crypto.createHmac('sha1', token).update(Buffer.from(data, 'utf-8')).digest('base64');
+
+  try {
+    const a = Buffer.from(expected);
+    const b = Buffer.from(signature);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
 export function twilioConfigured(): boolean {
   return !!(
     process.env.TWILIO_ACCOUNT_SID &&

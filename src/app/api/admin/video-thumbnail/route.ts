@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient as createServerClient } from '@/lib/supabase/server';
+
+export const dynamic = 'force-dynamic';
 
 // GET /api/admin/video-thumbnail?url=https://www.youtube.com/watch?v=...
 export async function GET(req: NextRequest) {
+  // Staff-only: this route makes server-side outbound fetches (Vimeo oEmbed);
+  // every other /api/admin route self-checks role, so this one must too.
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const { data: me } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (!me || !['admin', 'moderator'].includes(me.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const url = req.nextUrl.searchParams.get('url') || '';
 
   // YouTube

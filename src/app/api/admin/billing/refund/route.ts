@@ -9,7 +9,7 @@ async function checkAdmin() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   const { data: p } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (!p || !['admin', 'moderator'].includes(p.role)) return null;
+  if (!p || p.role !== 'admin') return null; // money-movement: admins only (not moderators)
   return user;
 }
 
